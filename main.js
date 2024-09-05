@@ -15,8 +15,14 @@ let camera,
   projectionCamera,
   projMaterial1,
   projMaterial2,
-  mesh,
-  planeMesh;
+  screen,
+  screen2,
+  cameraHelper,
+  spotLightHelper;
+
+const projection = {
+  fov: 30,
+};
 
 // console.log(image);
 
@@ -26,12 +32,15 @@ init();
 async function init() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xcccccc);
-  scene.fog = new THREE.FogExp2(0xcccccc, 0.002);
+  // scene.fog = new THREE.FogExp2(0xcccccc, 0.002);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setAnimationLoop(animate);
+
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.BasicShadowMap;
   document.body.appendChild(renderer.domElement);
 
   camera = new THREE.PerspectiveCamera(
@@ -42,11 +51,7 @@ async function init() {
   );
   // camera.position.set(0, 200, -400);
 
-  camera.position.set(
-    -153.28062450688265,
-    192.5591520894458,
-    356.3707421214962,
-  );
+  camera.position.set(0, 100, -150);
   // camera.rotation.set(
   //   -2.64007831672083,
   //   -0.020048985214325077,
@@ -54,104 +59,32 @@ async function init() {
   // );
 
   camera.lookAt({
-    x: -18.615903991952372,
-    y: -2.6395477291672917,
-    z: 652.5248779935566,
+    x: 0,
+    y: 0,
+    z: 0,
   });
 
-  let target = new THREE.Vector3(
-    -18.615903991952372,
-    -2.6395477291672917,
-    652.5248779935566,
-  );
+  projectionCamera = new THREE.PerspectiveCamera(30, 16 / 9, 1, 1000);
+  const projectionOffset = 100;
+  projectionCamera.position.set(projectionOffset, 0, -100);
+  projectionCamera.lookAt(projectionOffset, 0, 0);
 
-  // controls = new THREE.OrbitControls()
-
-  projectionCamera = new THREE.PerspectiveCamera(
-    63.300000000000004,
-    16 / 9,
-    1,
-    1000,
-  );
-  projectionCamera.position.set(
-    -115.17916447561632,
-    22.457428304785132,
-    508.8016951217737,
-  );
-  projectionCamera.rotation.set(
-    -3.3624176340181573,
-    0.046257221197621406,
-    -3.1280158734032977,
-  );
-  // projectionCamera.lookAt(0, 0, 0);
-
-  // controls
-
+  // CONTROLS
   controls = new MapControls(camera, renderer.domElement);
-
-  //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
-
   controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
   controls.dampingFactor = 0.05;
-
   controls.screenSpacePanning = false;
-
   controls.minDistance = 100;
   controls.maxDistance = 500;
-
   controls.maxPolarAngle = Math.PI / 2;
 
-  controls.target = target;
-  controls.saveState();
-
-  controls.update();
-
-  // world
-
-  // const geometry = new THREE.BoxGeometry();
-  // geometry.translate(0, 0.5, 0);
-  // const material = new THREE.MeshPhongMaterial({
-  //   color: 0xeeeeee,
-  //   flatShading: true,
-  // });
-
-  // for (let i = 0; i < 500; i++) {
-  //   const mesh = new THREE.Mesh(geometry, material);
-  //   mesh.position.x = Math.random() * 1600 - 800;
-  //   mesh.position.y = 0;
-  //   mesh.position.z = Math.random() * 1600 - 800;
-  //   mesh.scale.x = 20;
-  //   mesh.scale.y = Math.random() * 80 + 10;
-  //   mesh.scale.z = 20;
-  //   mesh.updateMatrix();
-  //   mesh.matrixAutoUpdate = false;
-  //   scene.add(mesh);
-  // }
-  //
-  const map = await fetch(geojsonUrl).then((d) => d.json());
-
-  const { buildings } = generateCity(map.features);
-
   const material = new THREE.MeshPhongMaterial({
-    color: 0xfafafa,
+    color: 0xffddff,
   });
-
-  // const loader = new THREE.TextureLoader();
-
-  // const texture = await new Promise((resolve) =>
-  //   loader.load(
-  //     image,
-  //     (texture) => resolve(texture),
-  //     undefined,
-  //     (err) => console.error(err)
-  //   )
-  // );
 
   const video = document.getElementById("video");
   video.play();
   const texture = new THREE.VideoTexture(video);
-
-  console.log(texture);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(4, 4);
@@ -159,78 +92,114 @@ async function init() {
   projMaterial1 = new ProjectedMaterial({
     camera: projectionCamera, // the camera that acts as a projector
     texture, // the texture being projected
-    // textureScale: 1, // scale down the texture a bit
-    // textureOffset: new THREE.Vector2(0.1, 0.1), // you can translate the texture if you want
     cover: false, // enable background-size: cover behaviour, by default it's like background-size: contain
-    color: "#ccc", // the color of the object if it's not projected on
-    // roughness: 0.3, // you can pass any other option that belongs to MeshPhysicalMaterial
+    color: "#fff", // the color of the object if it's not projected on
+    transparent: true,
   });
 
   projMaterial2 = new ProjectedMaterial({
     camera: projectionCamera, // the camera that acts as a projector
     texture, // the texture being projected
-    textureScale: 0.8, // scale down the texture a bit
-    textureOffset: new THREE.Vector2(0.1, 0.1), // you can translate the texture if you want
     cover: false, // enable background-size: cover behaviour, by default it's like background-size: contain
-    color: "#ccc", // the color of the object if it's not projected on
-    // roughness: 0.3, // you can pass any other option that belongs to MeshPhysicalMaterial
+    color: "#fff", // the color of the object if it's not projected on
+    transparent: true,
   });
+
+  // SCREEN
+
+  const geometry = new THREE.BoxGeometry(300, 80, 20);
+  geometry.clearGroups();
+  geometry.addGroup(0, Infinity, 0);
+  geometry.addGroup(0, Infinity, 1);
+  screen = new THREE.Mesh(geometry, [material, projMaterial1]);
+  // screen.castShadow = true;
+  screen.updateMatrix();
+  // buildingGeometry.merge(screen);
+  screen.layers.set(0);
+  screen.frustumCulled = false;
+  // console.log(screen);
+  screen.castShadow = true;
+  screen.receiveShadow = true;
+
+  const geometry2 = new THREE.BoxGeometry(9000, 2000, 20);
+  geometry2.clearGroups();
+  geometry2.addGroup(0, Infinity, 0);
+  geometry2.addGroup(0, Infinity, 1);
+  screen2 = new THREE.Mesh(geometry2, [material, projMaterial2]);
+  screen2.position.z = 200;
+  screen2.castShadow = true;
+  screen2.receiveShadow = true;
+
+  scene.add(screen, screen2);
 
   console.log(camera.rotation.x);
+  projMaterial1.project(screen);
+  projMaterial2.project(screen2);
 
-  const material3 = new THREE.MeshBasicMaterial({
-    map: texture,
-  });
+  // SPOTLIGHT
 
-  mesh = new THREE.Mesh(buildings, projMaterial1);
+  const spotLight = new THREE.SpotLight(0xffffff);
+  spotLight.position.set(-projectionOffset, 0, -100);
+  const targetObject = new THREE.Object3D();
+  targetObject.position.set(-projectionOffset, 0, 0);
+  scene.add(targetObject);
 
-  mesh.name = "BUILDINGS";
-  mesh.updateMatrix();
-  // buildingGeometry.merge(mesh);
-  mesh.layers.set(0);
-  mesh.frustumCulled = false;
-  // console.log(mesh);
-  mesh.castShadow = true;
+  spotLight.target = targetObject;
+  spotLight.decay = 0;
 
-  console.log(mesh);
+  spotLight.shadow.focus = 0.7;
+  spotLight.angle = (Math.PI / 180) * 30;
+  spotLight.map = texture;
 
-  mesh.scale.x = 250;
-  mesh.scale.y = 250;
-  mesh.scale.z = 250;
-  scene.add(mesh);
+  spotLight.castShadow = true;
 
-  const plane = new THREE.PlaneGeometry(10000, 10000);
-  plane.rotateY(Math.PI);
-  plane.rotateX(Math.PI / 2);
-  planeMesh = new THREE.Mesh(plane, projMaterial2);
-  scene.add(planeMesh);
+  spotLight.shadow.mapSize.width = 1024;
+  spotLight.shadow.mapSize.height = 1024;
 
-  projMaterial1.project(mesh);
-  projMaterial2.project(planeMesh);
+  spotLight.shadow.camera.near = 50;
+  spotLight.shadow.camera.far = 350;
+  spotLight.shadow.camera.fov = 30;
+
+  scene.add(spotLight);
 
   // lights
 
-  const dirLight1 = new THREE.DirectionalLight(0xffffff, 3);
-  dirLight1.position.set(1, 1, 1);
+  const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.2);
+  dirLight1.position.set(0, 0, -100);
+  dirLight1.castShadow = true;
   scene.add(dirLight1);
 
-  const dirLight2 = new THREE.DirectionalLight(0xffffff, 3);
+  const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
   dirLight2.position.set(-1, -1, -1);
   scene.add(dirLight2);
 
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambientLight);
+  // scene.add(ambientLight);
 
-  //
+  // HELPER
 
-  const helper = new THREE.CameraHelper(projectionCamera);
-  scene.add(helper);
+  cameraHelper = new THREE.CameraHelper(projectionCamera);
+  scene.add(cameraHelper);
+
+  spotLightHelper = new THREE.SpotLightHelper(spotLight);
+  scene.add(spotLightHelper);
 
   window.addEventListener("resize", onWindowResize);
 
   const gui = new GUI();
   gui.add(controls, "zoomToCursor");
   gui.add(controls, "screenSpacePanning");
+  const projectionFolder = gui.addFolder("Projection");
+  projectionFolder.add(projection, "fov", 1, 90).onChange((val) => {
+    projectionCamera.fov = val;
+    projMaterial1.project(screen);
+    projMaterial2.project(screen2);
+    cameraHelper.update();
+
+    spotLight.angle = (Math.PI / 180) * val;
+    spotLightHelper.update();
+  });
+  projectionFolder.open();
 }
 
 function onWindowResize() {
@@ -380,8 +349,10 @@ window.addEventListener("keydown", ({ code, key, shiftKey }) => {
     projectionCamera.rotation.set(rx, ry, rz);
     projectionCamera.fov = fov;
 
-    projMaterial1.project(mesh);
-    projMaterial2.project(planeMesh);
+    projMaterial1.project(screen);
+    projMaterial2.project(screen2);
+
+    cameraHelper.update();
   }
 });
 
