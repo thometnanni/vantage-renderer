@@ -105,29 +105,6 @@ async function init() {
   controls.saveState();
 
   controls.update();
-
-  // world
-
-  // const geometry = new THREE.BoxGeometry();
-  // geometry.translate(0, 0.5, 0);
-  // const material = new THREE.MeshPhongMaterial({
-  //   color: 0xeeeeee,
-  //   flatShading: true,
-  // });
-
-  // for (let i = 0; i < 500; i++) {
-  //   const mesh = new THREE.Mesh(geometry, material);
-  //   mesh.position.x = Math.random() * 1600 - 800;
-  //   mesh.position.y = 0;
-  //   mesh.position.z = Math.random() * 1600 - 800;
-  //   mesh.scale.x = 20;
-  //   mesh.scale.y = Math.random() * 80 + 10;
-  //   mesh.scale.z = 20;
-  //   mesh.updateMatrix();
-  //   mesh.matrixAutoUpdate = false;
-  //   scene.add(mesh);
-  // }
-  //
   const map = await fetch(geojsonUrl).then((d) => d.json());
 
   const { buildings } = generateCity(map.features);
@@ -135,17 +112,6 @@ async function init() {
   const material = new THREE.MeshPhongMaterial({
     color: 0xfafafa,
   });
-
-  // const loader = new THREE.TextureLoader();
-
-  // const texture = await new Promise((resolve) =>
-  //   loader.load(
-  //     image,
-  //     (texture) => resolve(texture),
-  //     undefined,
-  //     (err) => console.error(err)
-  //   )
-  // );
 
   const video = document.getElementById("video");
   video.play();
@@ -157,6 +123,7 @@ async function init() {
   texture.repeat.set(4, 4);
 
   projMaterial1 = new ProjectedMaterial({
+    transparent: true,
     camera: projectionCamera, // the camera that acts as a projector
     texture, // the texture being projected
     // textureScale: 1, // scale down the texture a bit
@@ -167,7 +134,8 @@ async function init() {
   });
 
   projMaterial2 = new ProjectedMaterial({
-    camera: projectionCamera, // the camera that acts as a projector
+    transparent: true,
+    camera: camera, // the camera that acts as a projector
     texture, // the texture being projected
     textureScale: 0.8, // scale down the texture a bit
     textureOffset: new THREE.Vector2(0.1, 0.1), // you can translate the texture if you want
@@ -176,13 +144,21 @@ async function init() {
     // roughness: 0.3, // you can pass any other option that belongs to MeshPhysicalMaterial
   });
 
+  projMaterial2.blending = THREE.MultiplyBlending;
+
   console.log(camera.rotation.x);
 
   const material3 = new THREE.MeshBasicMaterial({
-    map: texture,
+    // map: texture,
   });
 
-  mesh = new THREE.Mesh(buildings, projMaterial1);
+  buildings.clearGroups();
+  buildings.addGroup(0, Infinity, 0);
+  buildings.addGroup(0, Infinity, 1);
+  buildings.addGroup(0, Infinity, 2);
+  // buildings.addGroup( 0, Infinity, 3 );
+
+  mesh = new THREE.Mesh(buildings, [material, projMaterial1, projMaterial2]);
 
   mesh.name = "BUILDINGS";
   mesh.updateMatrix();
@@ -206,7 +182,7 @@ async function init() {
   scene.add(planeMesh);
 
   projMaterial1.project(mesh);
-  projMaterial2.project(planeMesh);
+  projMaterial2.project(mesh);
 
   // lights
 
@@ -381,7 +357,7 @@ window.addEventListener("keydown", ({ code, key, shiftKey }) => {
     projectionCamera.fov = fov;
 
     projMaterial1.project(mesh);
-    projMaterial2.project(planeMesh);
+    projMaterial2.project(mesh);
   }
 });
 
