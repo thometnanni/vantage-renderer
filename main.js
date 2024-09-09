@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import { GUI } from "three/addons/libs/lil-gui.module.min.js";
-import { generateCity } from "./city";
+import { generateBuildings } from "./city";
 
 import { MapControls } from "three/addons/controls/MapControls.js";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
@@ -128,7 +128,7 @@ async function init() {
   //
   const map = await fetch(geojsonUrl).then((d) => d.json());
 
-  const { buildings } = generateCity(map.features);
+  const buildings = generateBuildings(map);
 
   const material = new THREE.MeshPhongMaterial({
     color: 0xff0000,
@@ -183,9 +183,9 @@ async function init() {
 
   console.log(mesh);
 
-  mesh.scale.x = 250;
-  mesh.scale.y = 250;
-  mesh.scale.z = 250;
+  // mesh.scale.x = 250;
+  // mesh.scale.y = 250;
+  // mesh.scale.z = 250;
   scene.add(mesh);
 
   const plane = new THREE.PlaneGeometry(10000, 10000);
