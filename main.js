@@ -4,6 +4,7 @@ import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 import { generateCity } from "./city";
 
 import { MapControls } from "three/addons/controls/MapControls.js";
+import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import ProjectedMaterial from "three-projected-material";
 
 const geojsonUrl = "./nk-arcaden.json";
@@ -13,34 +14,30 @@ let camera,
   scene,
   renderer,
   projectionCamera,
-  projMaterial1,
-  projMaterial2,
+  projectionMaterial,
   mesh,
   planeMesh;
 
-// console.log(image);
-
 init();
-//render(); // remove when using animation loop
 
 async function init() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xcccccc);
-  scene.fog = new THREE.FogExp2(0xcccccc, 0.002);
+  // scene.fog = new THREE.FogExp2(0xcccccc, 0.002);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setAnimationLoop(animate);
+
   document.body.appendChild(renderer.domElement);
 
   camera = new THREE.PerspectiveCamera(
     60,
     window.innerWidth / window.innerHeight,
     1,
-    1000,
+    11000,
   );
-  // camera.position.set(0, 200, -400);
 
   camera.position.set(
     -153.28062450688265,
@@ -71,7 +68,7 @@ async function init() {
     63.300000000000004,
     16 / 9,
     1,
-    1000,
+    100000,
   );
   projectionCamera.position.set(
     -115.17916447561632,
@@ -87,24 +84,25 @@ async function init() {
 
   // controls
 
-  controls = new MapControls(camera, renderer.domElement);
+  controls = new PointerLockControls(projectionCamera, document.body);
+  // controls = new MapControls(camera, renderer.domElement);
 
-  //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
+  // controls.addEventListener("change", render); // call this only in static scenes (i.e., if there is no animation loop)
 
-  controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
-  controls.dampingFactor = 0.05;
+  // controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+  // controls.dampingFactor = 0.05;
 
-  controls.screenSpacePanning = false;
+  // controls.screenSpacePanning = false;
 
-  controls.minDistance = 100;
-  controls.maxDistance = 500;
+  // controls.minDistance = 100;
+  // controls.maxDistance = 500;
 
-  controls.maxPolarAngle = Math.PI / 2;
+  // controls.maxPolarAngle = Math.PI / 2;
 
-  controls.target = target;
-  controls.saveState();
+  // controls.target = target;
+  // controls.saveState();
 
-  controls.update();
+  // controls.update();
 
   // world
 
@@ -133,7 +131,8 @@ async function init() {
   const { buildings } = generateCity(map.features);
 
   const material = new THREE.MeshPhongMaterial({
-    color: 0xfafafa,
+    color: 0xff0000,
+    wireframe: true,
   });
 
   // const loader = new THREE.TextureLoader();
@@ -156,33 +155,23 @@ async function init() {
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(4, 4);
 
-  projMaterial1 = new ProjectedMaterial({
-    camera: projectionCamera, // the camera that acts as a projector
-    texture, // the texture being projected
-    // textureScale: 1, // scale down the texture a bit
-    // textureOffset: new THREE.Vector2(0.1, 0.1), // you can translate the texture if you want
-    cover: false, // enable background-size: cover behaviour, by default it's like background-size: contain
-    color: "#ccc", // the color of the object if it's not projected on
-    // roughness: 0.3, // you can pass any other option that belongs to MeshPhysicalMaterial
-  });
-
-  projMaterial2 = new ProjectedMaterial({
-    camera: projectionCamera, // the camera that acts as a projector
-    texture, // the texture being projected
-    textureScale: 0.8, // scale down the texture a bit
-    textureOffset: new THREE.Vector2(0.1, 0.1), // you can translate the texture if you want
-    cover: false, // enable background-size: cover behaviour, by default it's like background-size: contain
-    color: "#ccc", // the color of the object if it's not projected on
-    // roughness: 0.3, // you can pass any other option that belongs to MeshPhysicalMaterial
+  projectionMaterial = [0, 1, 2, 3, 4, 5, 6].map((d) => {
+    return new ProjectedMaterial({
+      camera: projectionCamera,
+      texture,
+      color: "#ccc",
+      transparent: true,
+      // wireframe: true,
+    });
   });
 
   console.log(camera.rotation.x);
 
-  const material3 = new THREE.MeshBasicMaterial({
-    map: texture,
-  });
+  buildings.clearGroups();
+  buildings.addGroup(0, Infinity, 0);
+  buildings.addGroup(0, Infinity, 1);
 
-  mesh = new THREE.Mesh(buildings, projMaterial1);
+  mesh = new THREE.Mesh(buildings, [projectionMaterial[0], material]);
 
   mesh.name = "BUILDINGS";
   mesh.updateMatrix();
@@ -202,11 +191,37 @@ async function init() {
   const plane = new THREE.PlaneGeometry(10000, 10000);
   plane.rotateY(Math.PI);
   plane.rotateX(Math.PI / 2);
-  planeMesh = new THREE.Mesh(plane, projMaterial2);
+  planeMesh = new THREE.Mesh(plane, projectionMaterial[1]);
   scene.add(planeMesh);
 
-  projMaterial1.project(mesh);
-  projMaterial2.project(planeMesh);
+  projectionMaterial[0].project(mesh);
+  projectionMaterial[1].project(planeMesh);
+
+  // Dome
+
+  // for (let i = 0; i < 4; i++) {
+  //   const domeGeometry = new THREE.PlaneGeometry(10000, 10000);
+  //   projectionMaterial[2].side = THREE.BackSide;
+  //   const domeMaterial = new THREE.MeshPhongMaterial({
+  //     color: 0xff0000,
+  //     map: texture,
+  //   });
+  //   var dome = new THREE.Mesh(domeGeometry, domeMaterial);
+  //   scene.add(dome);
+  //   dome.position.z = -5000;
+  //   dome.rotateY((Math.PI / 2) * i);
+  // }
+  // const domeGeometry = new THREE.PlaneGeometry(10000, 10000);
+  // domeGeometry.rotateY(Math.PI);
+  // projectionMaterial[2].side = THREE.BackSide;
+  // const domeMaterial = new THREE.MeshPhongMaterial({
+  //   color: 0xff0000,
+  //   map: texture,
+  // });
+  // var dome = new THREE.Mesh(domeGeometry, domeMaterial);
+  // scene.add(dome);
+  // dome.position.z = -5000;
+  // projectionMaterial[2].project(dome);
 
   // lights
 
@@ -228,9 +243,25 @@ async function init() {
 
   window.addEventListener("resize", onWindowResize);
 
+  const options = {
+    camera,
+    placeProjection,
+  };
+
   const gui = new GUI();
-  gui.add(controls, "zoomToCursor");
-  gui.add(controls, "screenSpacePanning");
+  gui.add(options, "placeProjection");
+
+  gui.add(options, "camera", { map: camera, projection: projectionCamera });
+}
+
+function placeProjection(e) {
+  document.activeElement.blur();
+  console.log(e);
+  // controls = new PointerLockControls(projectionCamera, document.body);
+  controls.lock();
+  // document.addEventListener("keydown", () => console.log("DOWN"));
+  // window.addEventListener("keydown", () => console.log("DOWN"));
+  // renderer.domElement.addEventListener("keydown", () => console.log("DOWN"));
 }
 
 function onWindowResize() {
@@ -248,10 +279,19 @@ function animate() {
 }
 
 function render() {
-  renderer.render(scene, camera);
+  renderer.render(scene, projectionCamera);
+  if (projectionMaterial != null) {
+    projectionMaterial[0].project(mesh);
+    projectionMaterial[1].project(planeMesh);
+  }
+  // renderer.render(scene, camera);
 }
 
-window.addEventListener("keydown", ({ code, key, shiftKey }) => {
+document.addEventListener("keydown", ({ code, key, shiftKey }) => {
+  console.log("key-pressed");
+  if (code === "Enter") {
+    placeProjection();
+  }
   if (code === "Space") {
     console.log("user camera");
     console.log(
@@ -380,8 +420,8 @@ window.addEventListener("keydown", ({ code, key, shiftKey }) => {
     projectionCamera.rotation.set(rx, ry, rz);
     projectionCamera.fov = fov;
 
-    projMaterial1.project(mesh);
-    projMaterial2.project(planeMesh);
+    projectionMaterial[0].project(mesh);
+    projectionMaterial[1].project(planeMesh);
   }
 });
 
