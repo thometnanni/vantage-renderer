@@ -6,7 +6,7 @@ import { rhumbBearing } from "@turf/rhumb-bearing";
 
 const GLOBAL = {
   config: {
-    citycenter: [13.4362366, 52.4813957],
+    citycenter: [13.43296915, 52.48236605],
   },
 };
 
