@@ -3,17 +3,13 @@ import * as THREE from "three";
 import { GUI } from "three/addons/libs/lil-gui.module.min";
 import { generateBuildings } from "./city";
 
-import { MapControls } from "three/addons/controls/MapControls";
-import { PointerLockControls } from "three/addons/controls/PointerLockControls";
 import ProjectedMaterial from "three-projected-material";
 
 import CameraOperator from "./cameraOperator";
 
 const geojsonUrl = "./nk-arcaden.json";
 
-let camera,
-  controls,
-  scene,
+let scene,
   renderer,
   projectionCamera,
   projectionMaterial,
