@@ -12,7 +12,9 @@ let scene,
   renderer,
   mesh,
   planeMesh,
+  domeMesh,
   cameraOperator,
+  size = 10000,
   projections = [];
 
 init();
@@ -80,7 +82,7 @@ async function init() {
 
   scene.add(mesh);
 
-  const plane = new THREE.PlaneGeometry(10000, 10000);
+  const plane = new THREE.PlaneGeometry(size, size);
   plane.rotateY(Math.PI);
   plane.rotateX(Math.PI / 2);
   planeMesh = new THREE.Mesh(plane, [
@@ -88,9 +90,28 @@ async function init() {
   ]);
   scene.add(planeMesh);
 
+  // DOME
+  const dome = new THREE.PlaneGeometry(size, size, 2, 2);
+  dome.rotateX(Math.PI / 2);
+  dome.attributes.position.setX(0, -size / 4);
+  dome.attributes.position.setZ(0, size / 4);
+  dome.attributes.position.setX(2, size / 4);
+  dome.attributes.position.setZ(2, size / 4);
+  dome.attributes.position.setY(4, size);
+  dome.attributes.position.setX(6, -size / 4);
+  dome.attributes.position.setZ(6, -size / 4);
+  dome.attributes.position.setX(8, size / 4);
+  dome.attributes.position.setZ(8, -size / 4);
+  dome.computeVertexNormals();
+  dome.clearGroups();
+  dome.addGroup(0, Infinity, 0);
+  domeMesh = new THREE.Mesh(dome, [...projections.map((p) => p.material.sky)]);
+  scene.add(domeMesh);
+
   projections.forEach((projection) => {
     projection.material.buildings.project(mesh);
     projection.material.ground.project(planeMesh);
+    projection.material.sky.project(domeMesh);
   });
 
   // lights
