@@ -5,7 +5,7 @@ import { generateBuildings } from "./city";
 
 import ProjectedMaterial from "three-projected-material";
 
-import CameraOperator from "./cameraOperator";
+import CameraOperator from "./CameraOperator";
 
 const geojsonUrl = "./nk-arcaden.json";
 

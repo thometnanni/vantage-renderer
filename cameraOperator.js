@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Vector3 } from "three";
+import { PerspectiveCamera } from "three";
 
 import { MapControls } from "three/addons/controls/MapControls";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls";
