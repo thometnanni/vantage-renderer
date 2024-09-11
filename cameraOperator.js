@@ -1,4 +1,4 @@
-import { PerspectiveCamera } from "three";
+import { PerspectiveCamera, Vector3 } from "three";
 
 import { MapControls } from "three/addons/controls/MapControls";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls";
@@ -25,7 +25,13 @@ export default class CameraOperator {
       this.map();
     });
 
+    this.fpControls.addEventListener("change", () => {
+      // console.log();
+    });
+
     this.fpControls.enabled = false;
+
+    document.addEventListener("keydown", this.keydown);
   }
 
   get camera() {
@@ -48,8 +54,44 @@ export default class CameraOperator {
     this.fpControls.lock();
   }
 
-  toggle() {
+  toggle = () => {
     if (this.mapControls.enabled) this.fp();
     else this.map();
-  }
+  };
+
+  keydown = ({ code, key, shiftKey }) => {
+    if (code === "Enter") {
+      this.toggle();
+    }
+
+    switch (code) {
+      case "KeyQ":
+        this.fpCamera.translateY(-1);
+        break;
+
+      case "ArrowUp":
+      case "KeyW":
+        this.fpCamera.translateZ(-1);
+        break;
+
+      case "KeyE":
+        this.fpCamera.translateY(1);
+        break;
+
+      case "ArrowLeft":
+      case "KeyA":
+        this.fpCamera.translateX(-1);
+        break;
+
+      case "ArrowDown":
+      case "KeyS":
+        this.fpCamera.translateZ(1);
+        break;
+
+      case "ArrowRight":
+      case "KeyD":
+        this.fpCamera.translateX(1);
+        break;
+    }
+  };
 }

@@ -156,7 +156,7 @@ async function init() {
 
   const options = {
     // camera,
-    "toggle camera": () => cameraOperator.toggle(),
+    "toggle camera": cameraOperator.toggle,
   };
 
   const gui = new GUI();
@@ -179,11 +179,11 @@ function update() {
   }
   renderer.render(scene, cameraOperator.camera);
 }
-document.addEventListener("keydown", ({ code, key, shiftKey }) => {
-  if (code === "Enter") {
-    cameraOperator.toggle();
-  }
-});
+// document.addEventListener("keydown", ({ code, key, shiftKey }) => {
+//   if (code === "Enter") {
+//     cameraOperator.toggle();
+//   }
+// });
 
 // document.addEventListener("keydown", ({ code, key, shiftKey }) => {
 //   console.log("key-pressed");
