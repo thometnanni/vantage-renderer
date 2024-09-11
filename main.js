@@ -52,13 +52,6 @@ async function init() {
       [-3.3624176340181573, 0.046257221197621406, -3.1280158734032977],
     ),
   );
-  projectionCamera = new THREE.PerspectiveCamera(60, 16 / 9, 1, 100);
-  projectionCamera.position.set(0, 1.8, 0);
-  projectionCamera.rotation.set(
-    -3.3624176340181573,
-    0.046257221197621406,
-    -3.1280158734032977,
-  );
 
   const map = await fetch(geojsonUrl).then((d) => d.json());
 
