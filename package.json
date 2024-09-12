@@ -12,7 +12,6 @@
     "vite": "^5.4.1"
   },
   "dependencies": {
-    "@threlte/core": "^7.3.1",
     "@turf/center": "^7.1.0",
     "@turf/rhumb-bearing": "^7.1.0",
     "@turf/rhumb-distance": "^7.1.0",
