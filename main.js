@@ -10,9 +10,9 @@ const geojsonUrl = "./nk-arcaden.json";
 
 let scene,
   renderer,
-  mesh,
-  planeMesh,
-  domeMesh,
+  buildings,
+  ground,
+  sky,
   cameraOperator,
   size = 10000,
   projections = [];
@@ -47,71 +47,74 @@ async function init() {
   video.play();
   const texture = new THREE.VideoTexture(video);
 
-  projections.push(
-    new Projection(
-      texture,
-      undefined,
-      [-3.3624176340181573, 0.046257221197621406, -3.1280158734032977],
-    ),
-  );
-
   const map = await fetch(geojsonUrl).then((d) => d.json());
 
-  const buildings = generateBuildings(map);
+  const buildingGeometry = generateBuildings(map);
 
-  const material = new THREE.MeshPhongMaterial({
+  const wireframeMaterial = new THREE.MeshPhongMaterial({
     color: 0xff0000,
     wireframe: true,
   });
 
-  buildings.clearGroups();
-  buildings.addGroup(0, Infinity, 0);
-  buildings.addGroup(0, Infinity, 1);
+  const solidMaterial = new THREE.MeshPhongMaterial({
+    color: 0xeeeeee,
+  });
 
-  mesh = new THREE.Mesh(buildings, [
-    ...projections.map((p) => p.material.buildings),
-    material,
+  buildingGeometry.clearGroups();
+  buildingGeometry.addGroup(0, Infinity, 0);
+  buildingGeometry.addGroup(0, Infinity, 1);
+
+  buildings = new THREE.Mesh(buildingGeometry, [
+    wireframeMaterial,
+    solidMaterial,
   ]);
 
-  mesh.name = "BUILDINGS";
-  mesh.updateMatrix();
-  mesh.layers.set(0);
-  mesh.frustumCulled = false;
-  // console.log(mesh);
-  mesh.castShadow = true;
+  buildings.name = "BUILDINGS";
+  buildings.updateMatrix();
+  buildings.layers.set(0);
+  buildings.frustumCulled = false;
+  // console.log(buildings);
+  buildings.castShadow = true;
 
-  scene.add(mesh);
+  scene.add(buildings);
 
-  const plane = new THREE.PlaneGeometry(size, size);
-  plane.rotateY(Math.PI);
-  plane.rotateX(Math.PI / 2);
-  planeMesh = new THREE.Mesh(plane, [
-    ...projections.map((p) => p.material.ground),
-  ]);
-  scene.add(planeMesh);
+  const groundGeometry = new THREE.PlaneGeometry(size, size);
+  groundGeometry.rotateY(Math.PI);
+  groundGeometry.rotateX(Math.PI / 2);
+  groundGeometry.clearGroups();
+  ground = new THREE.Mesh(groundGeometry, []);
+  scene.add(ground);
 
   // DOME
-  const dome = new THREE.PlaneGeometry(size, size, 2, 2);
-  dome.rotateX(Math.PI / 2);
-  dome.attributes.position.setX(0, -size / 4);
-  dome.attributes.position.setZ(0, size / 4);
-  dome.attributes.position.setX(2, size / 4);
-  dome.attributes.position.setZ(2, size / 4);
-  dome.attributes.position.setY(4, size);
-  dome.attributes.position.setX(6, -size / 4);
-  dome.attributes.position.setZ(6, -size / 4);
-  dome.attributes.position.setX(8, size / 4);
-  dome.attributes.position.setZ(8, -size / 4);
-  dome.computeVertexNormals();
-  dome.clearGroups();
-  dome.addGroup(0, Infinity, 0);
-  domeMesh = new THREE.Mesh(dome, [...projections.map((p) => p.material.sky)]);
-  scene.add(domeMesh);
+  const skyGeometry = new THREE.PlaneGeometry(size, size, 2, 2);
+  skyGeometry.rotateX(Math.PI / 2);
+  skyGeometry.attributes.position.setX(0, -size / 4);
+  skyGeometry.attributes.position.setZ(0, size / 4);
+  skyGeometry.attributes.position.setX(2, size / 4);
+  skyGeometry.attributes.position.setZ(2, size / 4);
+  skyGeometry.attributes.position.setY(4, size);
+  skyGeometry.attributes.position.setX(6, -size / 4);
+  skyGeometry.attributes.position.setZ(6, -size / 4);
+  skyGeometry.attributes.position.setX(8, size / 4);
+  skyGeometry.attributes.position.setZ(8, -size / 4);
+  skyGeometry.computeVertexNormals();
+  skyGeometry.clearGroups();
+  // skyGeometry.addGroup(0, Infinity, 0);
+  sky = new THREE.Mesh(skyGeometry, []);
+  scene.add(sky);
+
+  projections.push(
+    new Projection(
+      { buildings, ground, sky },
+      texture,
+      undefined,
+      [-3.3624176340181573, 0.046257221197621406, -3.1280158734032977],
+      50,
+    ),
+  );
 
   projections.forEach((projection) => {
-    projection.material.buildings.project(mesh);
-    projection.material.ground.project(planeMesh);
-    projection.material.sky.project(domeMesh);
+    projection.update();
   });
 
   // lights
@@ -140,6 +143,13 @@ async function init() {
 
   const gui = new GUI();
   gui.add(options, "toggle camera");
+
+  window.addEventListener("keydown", ({ code }) => {
+    if (code === "Space") {
+      cameraOperator.fp();
+      cameraOperator.attachProjection(projections[0]);
+    }
+  });
 }
 
 function onWindowResize() {

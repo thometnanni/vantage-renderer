@@ -1,12 +1,13 @@
-import { PerspectiveCamera } from "three";
+import { PerspectiveCamera, Vector3, Quaternion } from "three";
 
 import { MapControls } from "three/addons/controls/MapControls";
-import { PointerLockControls } from "three/addons/controls/PointerLockControls";
+import { PointerLockControls } from "./CustomPointerLockControls";
 
 export default class CameraOperator {
   mapCamera = new PerspectiveCamera(60, innerWidth / innerHeight, 1, 10000);
   fpCamera = new PerspectiveCamera(60, innerWidth / innerHeight, 1, 10000);
   mapControls;
+  projection;
 
   constructor(renderer, mapCameraPosition = [0, 100, -100]) {
     this.renderer = renderer;
@@ -25,13 +26,14 @@ export default class CameraOperator {
       this.map();
     });
 
-    this.fpControls.addEventListener("change", () => {
-      // console.log();
+    this.fpControls.addEventListener("change", (e, a, b) => {
+      if (this.fpControls.attachedCamera != null) this.projection.update();
     });
 
     this.fpControls.enabled = false;
 
     document.addEventListener("keydown", this.keydown);
+    document.addEventListener("mousedown", this.mousedown);
   }
 
   get camera() {
@@ -44,6 +46,7 @@ export default class CameraOperator {
     this.mapControls.enabled = true;
     this.fpControls.enabled = false;
     this.fpControls.unlock();
+    // this.projection = null;
   }
 
   fp() {
@@ -59,17 +62,27 @@ export default class CameraOperator {
     else this.map();
   };
 
+  attachProjection = (projection) => {
+    const pos = projection.camera.getWorldPosition(new Vector3());
+    const quat = projection.camera.getWorldQuaternion(new Quaternion());
+    this.fpCamera.position.set(...pos);
+    this.fpCamera.setRotationFromQuaternion(quat);
+    this.fpCamera.updateProjectionMatrix();
+    this.projection = projection;
+  };
+
   keydown = ({ code, key, shiftKey }) => {
     if (code === "Enter") {
       this.toggle();
     }
+
+    // if (this.mapControls.enabled) return;
 
     switch (code) {
       case "KeyQ":
         this.fpCamera.translateY(-1);
         break;
 
-      case "ArrowUp":
       case "KeyW":
         this.fpCamera.translateZ(-1);
         break;
@@ -83,7 +96,6 @@ export default class CameraOperator {
         this.fpCamera.translateX(-1);
         break;
 
-      case "ArrowDown":
       case "KeyS":
         this.fpCamera.translateZ(1);
         break;
@@ -93,5 +105,37 @@ export default class CameraOperator {
         this.fpCamera.translateX(1);
         break;
     }
+
+    if (this.projection != null) {
+      switch (code) {
+        case "ArrowUp":
+          this.projection.camera.fov++;
+          break;
+
+        case "ArrowLeft":
+          this.projection.camera.rotateZ(0.02);
+          break;
+
+        case "ArrowDown":
+          this.projection.camera.fov--;
+          break;
+
+        case "ArrowRight":
+          this.projection.camera.rotateZ(-0.02);
+          break;
+      }
+      this.projection.camera.position.set(
+        ...this.fpCamera.getWorldPosition(new Vector3()),
+      );
+      this.projection.update();
+    }
+  };
+
+  mousedown = (e) => {
+    if (!this.fpControls.enabled || this.projection == null) return;
+    this.fpControls.attachCamera(this.projection.camera);
+    window.addEventListener("mouseup", () => this.fpControls.detachCamera(), {
+      once: true,
+    });
   };
 }
