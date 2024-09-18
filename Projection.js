@@ -1,10 +1,11 @@
-import { PerspectiveCamera } from "three";
+import { PerspectiveCamera, CameraHelper, Color } from "three";
 import ProjectedMaterial from "three-projected-material";
 
 export default class Projection {
   camera;
   layers;
   material = {};
+  helper;
 
   constructor(
     layers,
@@ -34,7 +35,31 @@ export default class Projection {
       );
       this.layers[layer].material.push(this.material[layer]);
     }
+
+    this.helper = new CameraHelper(this.camera);
+    this.#setHelperColor(0xffffff);
   }
+
+  blur = () => {
+    this.#setHelperColor(0xffffff);
+  };
+
+  focus = () => {
+    console.log("focus");
+    this.#setHelperColor(0x0000ff);
+    // this.helper.setColors(
+    //   this.#helperColorActive,
+    //   this.#helperColorActive,
+    //   this.#helperColorActive,
+    //   this.#helperColorActive,
+    //   this.#helperColorActive,
+    // );
+  };
+
+  #setHelperColor = (color) => {
+    const c = new Color(color);
+    this.helper.setColors(c, c, c, c, c);
+  };
 
   update = () => {
     for (const layer in this.layers) {

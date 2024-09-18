@@ -7,6 +7,8 @@ import { generateBuildings } from "./city";
 import CameraOperator from "./cameraOperator";
 import Projection from "./Projection";
 
+import records from "./records";
+
 // const geojsonUrl = "./nk-arcaden.json";
 const geojsonUrl = "./warthestrasse.json";
 const imageUrl = "./media/warthe-helper.png";
@@ -18,7 +20,8 @@ let scene,
   sky,
   cameraOperator,
   size = 10000,
-  projections = [];
+  projections = [],
+  activeProjection = 0;
 
 init();
 
@@ -35,22 +38,6 @@ async function init() {
   document.body.appendChild(renderer.domElement);
 
   cameraOperator = new CameraOperator(renderer);
-
-  const loader = new THREE.TextureLoader();
-  const texture = await new Promise((resolve) =>
-    loader.load(
-      imageUrl,
-      (texture) => resolve(texture),
-      undefined,
-      (err) => console.error(err),
-    ),
-  );
-
-  console.log(texture);
-
-  // const video = document.getElementById("video");
-  // video.play();
-  // const texture = new THREE.VideoTexture(video);
 
   const map = await fetch(geojsonUrl).then((d) => d.json());
   const mapCenter = center(map);
@@ -109,19 +96,40 @@ async function init() {
   sky = new THREE.Mesh(skyGeometry, []);
   scene.add(sky);
 
-  projections.push(
-    new Projection(
+  const promises = records.map(async (record) => {
+    const { position, rotation, fov, ratio } = record.camera;
+
+    const loader = new THREE.TextureLoader();
+    const texture = await new Promise((resolve) =>
+      loader.load(
+        record.media,
+        (texture) => resolve(texture),
+        undefined,
+        (err) => console.error(err),
+      ),
+    );
+
+    console.log(texture);
+
+    // const video = document.getElementById("video");
+    // video.play();
+    // const texture = new THREE.VideoTexture(video);
+    //
+    return new Projection(
       { buildings, ground, sky },
       texture,
-      undefined,
-      [-3.3624176340181573, 0.046257221197621406, -3.1280158734032977],
-      50,
-      768 / 1024,
-    ),
-  );
+      position,
+      rotation,
+      fov,
+      ratio,
+    );
+  });
+
+  await Promise.all(promises).then((p) => projections.push(...p));
 
   projections.forEach((projection) => {
     projection.update();
+    scene.add(projection.helper);
   });
 
   // lights
@@ -139,8 +147,9 @@ async function init() {
 
   // HELPER
 
-  const helper = new THREE.CameraHelper(projections[0].camera);
-  scene.add(helper);
+  // const helper = new THREE.CameraHelper(projections[0].camera);
+  // helper.setColors(0xcccccc, 0xcccccc, 0xcccccc, 0xcccccc, 0xcccccc);
+  // scene.add(helper);
 
   window.addEventListener("resize", onWindowResize);
 
@@ -151,10 +160,30 @@ async function init() {
   const gui = new GUI();
   gui.add(options, "toggle camera");
 
-  window.addEventListener("keydown", ({ code }) => {
+  window.addEventListener("keydown", ({ code, shiftKey }) => {
+    const digit = /^Digit([0-9])/.exec(code)?.[1];
+    if (digit != null) {
+      const index = digit - 1;
+      if (index >= projections.length) return;
+      activeProjection = index;
+      // projections.forEach((projection) => {
+      //   projection.blur();
+      // });
+
+      // projections[activeProjection].focus();
+      cameraOperator.detachProjection();
+      cameraOperator.attachProjection(projections[activeProjection]);
+    }
     if (code === "Space") {
-      cameraOperator.fp();
-      cameraOperator.attachProjection(projections[0]);
+      // cameraOperator.fp();
+      if (cameraOperator.projection) {
+        cameraOperator.detachProjection();
+      } else {
+        cameraOperator.attachProjection(
+          projections[activeProjection],
+          shiftKey,
+        );
+      }
     }
   });
 }

@@ -62,13 +62,25 @@ export default class CameraOperator {
     else this.map();
   };
 
-  attachProjection = (projection) => {
-    const pos = projection.camera.getWorldPosition(new Vector3());
-    const quat = projection.camera.getWorldQuaternion(new Quaternion());
-    this.fpCamera.position.set(...pos);
-    this.fpCamera.setRotationFromQuaternion(quat);
-    this.fpCamera.updateProjectionMatrix();
+  attachProjection = (projection, reverse) => {
+    const source = reverse ? this.fpCamera : projection.camera;
+    const target = reverse ? projection.camera : this.fpCamera;
+
+    const pos = source.getWorldPosition(new Vector3());
+    const quat = source.getWorldQuaternion(new Quaternion());
+    target.position.set(...pos);
+    target.setRotationFromQuaternion(quat);
+    target.updateProjectionMatrix();
+
     this.projection = projection;
+    this.projection.focus();
+
+    if (reverse) this.projection.update();
+  };
+
+  detachProjection = () => {
+    this.projection.blur();
+    this.projection = null;
   };
 
   keydown = ({ code, key, shiftKey }) => {
