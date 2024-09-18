@@ -1,12 +1,15 @@
 import * as THREE from "three";
 
+import center from "@turf/center";
 import { GUI } from "three/addons/libs/lil-gui.module.min";
 import { generateBuildings } from "./city";
 
 import CameraOperator from "./cameraOperator";
 import Projection from "./Projection";
 
-const geojsonUrl = "./nk-arcaden.json";
+// const geojsonUrl = "./nk-arcaden.json";
+const geojsonUrl = "./warthestrasse.json";
+const imageUrl = "./media/warthe-helper.png";
 
 let scene,
   renderer,
@@ -33,23 +36,26 @@ async function init() {
 
   cameraOperator = new CameraOperator(renderer);
 
-  // const loader = new THREE.TextureLoader();
-  // const texture = await new Promise((resolve) =>
-  //   loader.load(
-  //     image,
-  //     (texture) => resolve(texture),
-  //     undefined,
-  //     (err) => console.error(err)
-  //   )
-  // );
+  const loader = new THREE.TextureLoader();
+  const texture = await new Promise((resolve) =>
+    loader.load(
+      imageUrl,
+      (texture) => resolve(texture),
+      undefined,
+      (err) => console.error(err),
+    ),
+  );
 
-  const video = document.getElementById("video");
-  video.play();
-  const texture = new THREE.VideoTexture(video);
+  console.log(texture);
+
+  // const video = document.getElementById("video");
+  // video.play();
+  // const texture = new THREE.VideoTexture(video);
 
   const map = await fetch(geojsonUrl).then((d) => d.json());
+  const mapCenter = center(map);
 
-  const buildingGeometry = generateBuildings(map);
+  const buildingGeometry = generateBuildings(map, mapCenter);
 
   const wireframeMaterial = new THREE.MeshPhongMaterial({
     color: 0xff0000,
@@ -110,6 +116,7 @@ async function init() {
       undefined,
       [-3.3624176340181573, 0.046257221197621406, -3.1280158734032977],
       50,
+      768 / 1024,
     ),
   );
 
