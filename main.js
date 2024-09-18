@@ -109,23 +109,24 @@ async function init() {
       ),
     );
 
-    console.log(texture);
-
-    // const video = document.getElementById("video");
-    // video.play();
-    // const texture = new THREE.VideoTexture(video);
-    //
-    return new Projection(
-      { buildings, ground, sky },
-      texture,
-      position,
-      rotation,
-      fov,
-      ratio,
-    );
+    return { texture, record };
   });
 
-  await Promise.all(promises).then((p) => projections.push(...p));
+  await Promise.all(promises).then((d) => {
+    projections.push(
+      ...d.map(({ record, texture }) => {
+        const { position, rotation, fov, ratio } = record.camera;
+        return new Projection(
+          { buildings, ground, sky },
+          texture,
+          position,
+          rotation,
+          fov,
+          ratio,
+        );
+      }),
+    );
+  });
 
   projections.forEach((projection) => {
     projection.update();
@@ -160,7 +161,7 @@ async function init() {
   const gui = new GUI();
   gui.add(options, "toggle camera");
 
-  window.addEventListener("keydown", ({ code, shiftKey }) => {
+  window.addEventListener("keydown", async ({ code, shiftKey }) => {
     const digit = /^Digit([0-9])/.exec(code)?.[1];
     if (digit != null) {
       const index = digit - 1;
@@ -184,6 +185,25 @@ async function init() {
           shiftKey,
         );
       }
+    }
+
+    if (code === "KeyC") {
+      const currentRecords = records.map((r, i) => {
+        return {
+          ...r,
+          camera: {
+            position: [...projections[i].camera.position],
+            rotation: [...projections[i].camera.rotation],
+            fov: projections[i].camera.fov,
+            ratio: projections[i].camera.aspect,
+          },
+        };
+      });
+
+      await navigator.clipboard.writeText(
+        JSON.stringify(currentRecords, null, 2),
+      );
+      console.log("copied to clipboard");
     }
   });
 }
