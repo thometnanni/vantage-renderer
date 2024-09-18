@@ -79,7 +79,7 @@ export default class CameraOperator {
   };
 
   detachProjection = () => {
-    this.projection.blur();
+    this.projection?.blur();
     this.projection = null;
   };
 
