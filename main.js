@@ -53,12 +53,23 @@ async function init() {
 
   const wireframeMaterial = new THREE.MeshPhongMaterial({
     color: 0xff0000,
-    wireframe: true,
   });
 
   const solidMaterial = new THREE.MeshPhongMaterial({
-    color: 0xeeeeee,
+    color: 0xeeeeee
   });
+
+  const geo = new THREE.EdgesGeometry(buildingGeometry);
+  const lineMaterial = new THREE.LineBasicMaterial({
+    color: 0xff0000,
+    linewidth: 5,
+    linecap: 'round',
+    linejoin: 'round'
+  });
+
+  const wireframe = new THREE.LineSegments(geo, lineMaterial);
+  const solidMesh = new THREE.Mesh(buildingGeometry, solidMaterial);
+
 
   buildingGeometry.clearGroups();
   buildingGeometry.addGroup(0, Infinity, 0);
@@ -68,6 +79,9 @@ async function init() {
     wireframeMaterial,
     solidMaterial,
   ]);
+
+  buildings.add(solidMesh);
+  buildings.add(wireframe);
 
   buildings.name = "BUILDINGS";
   buildings.updateMatrix();
