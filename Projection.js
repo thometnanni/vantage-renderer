@@ -84,20 +84,20 @@ export default class Projection {
 
     this.plane.geometry.addGroup(0, Infinity, 0);
     this.plane.material.push(
-      // new MeshBasicMaterial({
-      //   transparent: true,
-      //   opacity: 0,
-      //   // depthWrite: false,
-      //   // map: texture,
-      //   // color: 0xff0000,
-      // }),
       new MeshBasicMaterial({
-        // transparent: true,
-        // opacity: 0,
-        depthWrite: true,
-        map: this.renderTarget.depthTexture,
+        transparent: true,
+        opacity: 0,
+        // depthWrite: false,
+        // map: texture,
         // color: 0xff0000,
       }),
+      // new MeshBasicMaterial({
+      //   // transparent: true,
+      //   // opacity: 0,
+      //   depthWrite: true,
+      //   map: this.renderTarget.depthTexture,
+      //   // color: 0xff0000,
+      // }),
     );
 
     // new MeshBasicMaterial({ map: this.renderTarget.depthTexture }),
