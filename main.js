@@ -10,7 +10,7 @@ import Projection from "./Projection";
 import records from "./records";
 
 // const geojsonUrl = "./nk-arcaden.json";
-const geojsonUrl = "./warthestrasse.json";
+const geojsonUrl = "./hermannstrasse.json";
 const imageUrl = "./media/warthe-helper.png";
 
 let scene,
@@ -49,20 +49,19 @@ async function init() {
   });
 
   const solidMaterial = new THREE.MeshPhongMaterial({
-    color: 0xeeeeee
+    color: 0xeeeeee,
   });
 
   const geo = new THREE.EdgesGeometry(buildingGeometry);
   const lineMaterial = new THREE.LineBasicMaterial({
     color: 0xff0000,
     linewidth: 5,
-    linecap: 'round',
-    linejoin: 'round'
+    linecap: "round",
+    linejoin: "round",
   });
 
   const wireframe = new THREE.LineSegments(geo, lineMaterial);
   const solidMesh = new THREE.Mesh(buildingGeometry, solidMaterial);
-
 
   buildingGeometry.clearGroups();
   buildingGeometry.addGroup(0, Infinity, 0);
@@ -85,7 +84,7 @@ async function init() {
 
   scene.add(buildings);
 
-  const groundGeometry = new THREE.PlaneGeometry(size, size);
+  const groundGeometry = new THREE.BoxGeometry(size, size, 1);
   groundGeometry.rotateY(Math.PI);
   groundGeometry.rotateX(Math.PI / 2);
   groundGeometry.clearGroups();
@@ -129,15 +128,21 @@ async function init() {
   await Promise.all(promises).then((d) => {
     projections.push(
       ...d.map(({ record, texture }) => {
-        const { position, rotation, fov, ratio } = record.camera;
-        return new Projection(
-          { buildings, ground, sky },
+        const { position, rotation, fov, ratio, far, orthographic, size } =
+          record.camera;
+        return new Projection({
+          renderer,
+          scene,
+          layers: { buildings, ground, sky },
           texture,
-          position,
-          rotation,
+          cameraPosition: position,
+          cameraRotation: rotation,
           fov,
           ratio,
-        );
+          far,
+          orthographic,
+          size,
+        });
       }),
     );
   });
@@ -203,13 +208,18 @@ async function init() {
 
     if (code === "KeyC") {
       const currentRecords = records.map((r, i) => {
+        const width = projections[i].camera.right - projections[i].camera.left;
+        const height = projections[i].camera.top - projections[i].camera.bottom;
         return {
           ...r,
           camera: {
             position: [...projections[i].camera.position],
             rotation: [...projections[i].camera.rotation],
             fov: projections[i].camera.fov,
-            ratio: projections[i].camera.aspect,
+            ratio: projections[i].camera.aspect ?? height / width,
+            far: projections[i].camera.far,
+            size: width ?? undefined,
+            orthographic: projections[i].camera.isOrthographicCamera,
           },
         };
       });
