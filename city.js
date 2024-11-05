@@ -1,14 +1,16 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils";
-import { center } from "@turf/center";
 import { rhumbDistance } from "@turf/rhumb-distance";
 import { rhumbBearing } from "@turf/rhumb-bearing";
+import { bboxClip } from "@turf/bbox-clip";
 
-function generateBuildings(geo, center) {
+function generateBuildings(geo, center, bbox) {
   const buildings = geo.features
     .filter(({ properties }) => properties.building != null)
     .map((feature) => {
-      const coordinates = feature.geometry.coordinates;
+      const coordinates = (bbox ? bboxClip(feature.geometry, bbox) : feature)
+        .geometry.coordinates;
+      if (coordinates[0] == null) return;
       const shape = getShapeFromCoordinates(coordinates[0], center);
       shape.holes = coordinates
         .slice(1)
@@ -37,21 +39,21 @@ function getBuildingHeight(properties) {
 }
 
 function estimateBuildingHeight(levels = 1) {
-  return levels * 3;
+  return levels * 4;
 }
 
 function getShapeFromCoordinates(coordinates, center) {
-  return new THREE.Shape(coordinates.map((c) => toMeters(c, center)));
+  return new THREE.Shape(coordinates.map((c) => toMeters(c, center, true)));
 }
 
-function toMeters(point, reference) {
+function toMeters(point, reference, flipX) {
   const distance = rhumbDistance(point, reference) * 1000;
   const bearing = (rhumbBearing(point, reference) * Math.PI) / 180;
 
-  let x = -distance * Math.cos(bearing);
+  let x = distance * Math.cos(bearing) * (flipX ? -1 : 1);
   let y = distance * Math.sin(bearing);
 
   return new THREE.Vector2(x, y);
 }
 
-export { generateBuildings };
+export { generateBuildings, toMeters };

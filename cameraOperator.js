@@ -9,9 +9,12 @@ export default class CameraOperator {
   mapControls;
   projection;
 
-  constructor(renderer, mapCameraPosition = [0, 100, -100]) {
+  constructor(renderer, mapCameraPosition = [0, 100, -100], mapCameraRotation) {
     this.renderer = renderer;
     this.mapCamera.position.set(...mapCameraPosition);
+    if (mapCameraRotation) {
+      this.mapCamera.rotation.set(mapCameraRotation);
+    }
 
     this.mapControls = new MapControls(
       this.mapCamera,
@@ -63,6 +66,7 @@ export default class CameraOperator {
   };
 
   attachProjection = (projection, reverse) => {
+    this.detachProjection();
     const source = reverse ? this.fpCamera : projection.camera;
     const target = reverse ? projection.camera : this.fpCamera;
 
@@ -84,9 +88,9 @@ export default class CameraOperator {
   };
 
   keydown = ({ code, key, shiftKey }) => {
-    if (code === "Enter") {
-      this.toggle();
-    }
+    // if (code === "Enter") {
+    //   this.toggle();
+    // }
 
     // if (this.mapControls.enabled) return;
 
@@ -103,7 +107,6 @@ export default class CameraOperator {
         this.fpCamera.translateY(1);
         break;
 
-      case "ArrowLeft":
       case "KeyA":
         this.fpCamera.translateX(-1);
         break;
@@ -112,7 +115,6 @@ export default class CameraOperator {
         this.fpCamera.translateZ(1);
         break;
 
-      case "ArrowRight":
       case "KeyD":
         this.fpCamera.translateX(1);
         break;
@@ -121,7 +123,9 @@ export default class CameraOperator {
     if (this.projection != null) {
       switch (code) {
         case "ArrowUp":
-          this.projection.camera.fov++;
+          this.projection.camera.isOrthographicCamera
+            ? (this.projection.camera.zoom += 0.01)
+            : this.projection.camera.fov++;
           break;
 
         case "ArrowLeft":
@@ -129,7 +133,9 @@ export default class CameraOperator {
           break;
 
         case "ArrowDown":
-          this.projection.camera.fov--;
+          this.projection.camera.isOrthographicCamera
+            ? (this.projection.camera.zoom -= 0.01)
+            : this.projection.camera.fov--;
           break;
 
         case "ArrowRight":

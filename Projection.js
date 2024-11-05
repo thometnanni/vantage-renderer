@@ -13,18 +13,23 @@ import {
   BoxGeometry,
   Vector2,
   OrthographicCamera,
+  DoubleSide,
 } from "three";
+
+import { toMeters } from "./city";
 import ProjectedMaterial from "three-projected-material";
 
 export default class Projection {
   camera;
   layers;
   material = {};
-  helper;
+  helper = {};
   renderer;
   scene;
   renderTarget;
   plane;
+  texture;
+  textureSource;
 
   constructor({
     renderer,
@@ -34,10 +39,13 @@ export default class Projection {
     cameraPosition = [0, 1.8, 0],
     cameraRotation = [0, 0, 1],
     fov = 60,
+    bounds,
     ratio = 16 / 9,
     far = 150,
     orthographic = false,
     size = 100,
+    center,
+    textureSource,
   } = {}) {
     this.renderer = renderer;
     this.scene = scene;
@@ -47,16 +55,22 @@ export default class Projection {
 
     this.camera = orthographic
       ? new OrthographicCamera(
-          -size / 2,
-          size / 2,
-          (-size / 2) * ratio,
-          (size / 2) * ratio,
+          toMeters([bounds.left, bounds.top], center).x,
+          toMeters([bounds.right, bounds.bottom], center).x,
+          -toMeters([bounds.right, bounds.bottom], center).y,
+          -toMeters([bounds.left, bounds.top], center).y,
           0,
           far,
         )
       : new PerspectiveCamera(fov, ratio, near, far);
+
+    // this.camera.rotation.order = "YXZ";
+    //
+
     this.camera.position.set(...cameraPosition);
     this.camera.rotation.set(...cameraRotation);
+
+    this.camera.rotation.reorder("YXZ");
 
     this.renderTarget = new WebGLRenderTarget(2000, 2000);
     this.renderTarget.texture.format = RGBAFormat;
@@ -86,10 +100,11 @@ export default class Projection {
     this.plane.material.push(
       new MeshBasicMaterial({
         transparent: true,
-        opacity: 0,
+        opacity: 0.9,
         // depthWrite: false,
         // map: texture,
-        // color: 0xff0000,
+        color: 0xffffff,
+        side: DoubleSide,
       }),
       // new MeshBasicMaterial({
       //   // transparent: true,
@@ -110,10 +125,13 @@ export default class Projection {
     this.updatePlane();
     this.createDepthMap();
 
+    this.texture = texture;
+    this.textureSource = textureSource;
+
     for (const layer in this.layers) {
       this.material[layer] = new ProjectedMaterial({
         camera: this.camera,
-        texture,
+        texture: this.texture,
         color: "#ccc",
         transparent: true,
         depthMap: this.renderTarget.depthTexture,
@@ -127,17 +145,32 @@ export default class Projection {
       this.layers[layer].material.push(this.material[layer]);
     }
 
+    this.renderToLayer = new Proxy(
+      Object.fromEntries(Object.keys(this.layers).map((k) => [k, true])),
+      {
+        set: (target, key, value) => {
+          target[key] = value;
+          this.material[key].visible = value;
+          if (key === "plane") this.layers.plane.visible = value;
+          return true;
+        },
+      },
+    );
+
     this.helper = new CameraHelper(this.camera);
-    this.#setHelperColor(0xffffff);
+    this.#setHelperColor(0x0000ff);
+    this.helper.visible = false;
   }
 
   blur = () => {
-    this.#setHelperColor(0xffffff);
+    this.helper.visible = false;
+    // this.#setHelperColor(0xffffff);
   };
 
   focus = () => {
     console.log("focus");
-    this.#setHelperColor(0x0000ff);
+    this.helper.visible = true;
+    // this.#setHelperColor(0x0000ff);
     // this.helper.setColors(
     //   this.#helperColorActive,
     //   this.#helperColorActive,
@@ -153,17 +186,26 @@ export default class Projection {
   };
 
   createDepthMap = () => {
+    const helperVisible = this.helper.visible;
+    this.helper.visible = false;
+
     this.scene.overrideMaterial = new MeshBasicMaterial();
     this.renderer.setRenderTarget(this.renderTarget);
     this.renderer.render(this.scene, this.camera);
     this.renderer.setRenderTarget(null);
     this.scene.overrideMaterial = null;
 
-    // this.plane.material = this.renderTarget.depthTexture;
+    this.helper.visible = helperVisible;
+  };
+
+  updateTexture = (texture) => {
+    for (const layer in this.layers) {
+      this.material[layer].texture = texture;
+    }
+    this.update();
   };
 
   updatePlane = () => {
-    // console.log(this.camera.position);
     this.plane.rotation.set(...this.camera.rotation);
     this.plane.position.set(...this.camera.position);
 
@@ -176,15 +218,15 @@ export default class Projection {
 
     this.plane.scale.set(...scale, 1);
 
-    this.plane.translateZ(-this.camera.far + 0.001);
+    this.plane.translateZ(-this.camera.far + this.camera.far * 0.001);
   };
 
   update = () => {
     this.createDepthMap();
     this.updatePlane();
     this.helper.update();
+
     for (const layer in this.layers) {
-      if (layer === "plane") console.log(this.layers[layer].material);
       this.material[layer].project(this.layers[layer]);
     }
   };

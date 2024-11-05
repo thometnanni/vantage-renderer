@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 import center from "@turf/center";
 import { GUI } from "three/addons/libs/lil-gui.module.min";
-import { generateBuildings } from "./city";
+import { generateBuildings, toMeters } from "./city";
 
 import CameraOperator from "./cameraOperator";
 import Projection from "./Projection";
@@ -20,8 +20,7 @@ let scene,
   sky,
   cameraOperator,
   size = 10000,
-  projections = [],
-  activeProjection = 0;
+  projections = [];
 
 init();
 
@@ -37,12 +36,20 @@ async function init() {
 
   document.body.appendChild(renderer.domElement);
 
-  cameraOperator = new CameraOperator(renderer);
+  cameraOperator = new CameraOperator(
+    renderer,
+    [-118.89, 28.07, 14.24],
+    [-1.8891596839718918, -1.266917979002451, -1.9033664838293778, "XYZ"],
+  );
 
   const map = await fetch(geojsonUrl).then((d) => d.json());
   const mapCenter = center(map);
 
-  const buildingGeometry = generateBuildings(map, mapCenter);
+  const buildingGeometry = generateBuildings(
+    map,
+    mapCenter,
+    [13.4197998046875, 52.46605036188952, 13.43902587890625, 52.47608904123904],
+  );
 
   const wireframeMaterial = new THREE.MeshPhongMaterial({
     color: 0xff0000,
@@ -88,7 +95,7 @@ async function init() {
   groundGeometry.rotateY(Math.PI);
   groundGeometry.rotateX(Math.PI / 2);
   groundGeometry.clearGroups();
-  ground = new THREE.Mesh(groundGeometry, []);
+  ground = new THREE.Mesh(groundGeometry, [solidMaterial]);
   scene.add(ground);
 
   // DOME
@@ -110,17 +117,18 @@ async function init() {
   scene.add(sky);
 
   const promises = records.map(async (record) => {
-    const { position, rotation, fov, ratio } = record.camera;
+    const url = Array.isArray(record.media) ? record.media[0] : record.media;
 
-    const loader = new THREE.TextureLoader();
-    const texture = await new Promise((resolve) =>
-      loader.load(
-        record.media,
-        (texture) => resolve(texture),
-        undefined,
-        (err) => console.error(err),
-      ),
-    );
+    const texture = await loadTexture(url);
+
+    //   new Promise((resolve) =>
+    //   loader.load(
+    //     url,
+    //     (texture) => resolve(texture),
+    //     undefined,
+    //     (err) => console.error(err),
+    //   ),
+    // );
 
     return { texture, record };
   });
@@ -128,20 +136,34 @@ async function init() {
   await Promise.all(promises).then((d) => {
     projections.push(
       ...d.map(({ record, texture }) => {
-        const { position, rotation, fov, ratio, far, orthographic, size } =
-          record.camera;
-        return new Projection({
-          renderer,
-          scene,
-          layers: { buildings, ground, sky },
-          texture,
-          cameraPosition: position,
-          cameraRotation: rotation,
+        const {
+          position,
+          rotation,
           fov,
           ratio,
           far,
           orthographic,
           size,
+          bounds,
+        } = record.camera;
+
+        return new Projection({
+          renderer,
+          scene,
+          layers: { buildings, ground, sky },
+          texture,
+          textureSource: Array.isArray(record.media)
+            ? record.media[0]
+            : record.media,
+          cameraPosition: position,
+          cameraRotation: rotation,
+          bounds,
+          fov,
+          ratio,
+          far,
+          orthographic,
+          size,
+          center: mapCenter,
         });
       }),
     );
@@ -166,44 +188,214 @@ async function init() {
   scene.add(ambientLight);
 
   // HELPER
-
-  // const helper = new THREE.CameraHelper(projections[0].camera);
-  // helper.setColors(0xcccccc, 0xcccccc, 0xcccccc, 0xcccccc, 0xcccccc);
-  // scene.add(helper);
+  // const dot = new THREE.Mesh(
+  //   new THREE.SphereGeometry(4),
+  //   new THREE.MeshBasicMaterial({ color: 0xff0000 }),
+  // );
+  // const coordinate = [13.422461, 52.472694];
+  // const local = toMeters(mapCenter, mapCenter);
+  // dot.position.set(local.x, 0, local.y);
+  // scene.add(dot);
 
   window.addEventListener("resize", onWindowResize);
 
+  const keys = {
+    fpv: "first person [⏎]",
+    projection: `projection [0-${Math.min(projections.length - 1, 9)}]`,
+    fov: "fov",
+  };
   const options = {
-    "toggle camera": cameraOperator.toggle,
+    fpv: false,
+    [keys.projection]: null,
+    // [keys.fov]: 50,
+  };
+
+  const camOptions = {
+    none: null,
+    map: 0,
+    "cam 1": 1,
+    "cam 2": 2,
+    "cam 3": 3,
   };
 
   const gui = new GUI();
-  gui.add(options, "toggle camera");
+  const guiControllerFPV = gui
+    .add(options, "fpv")
+    .name("first person [⏎]")
+    .onChange(() => {
+      cameraOperator.toggle();
+      document.activeElement.blur();
+    });
+  gui.add(options, keys.projection, camOptions).onChange((value) => {
+    const removeControllers = [
+      "texture",
+      "fov",
+      "x",
+      "y",
+      "z",
+      "yaw",
+      "pitch",
+      "roll",
+      "far",
+      "textureSource",
+      "buildings",
+      "ground",
+      "plane",
+    ];
+    gui.controllers
+      .filter(({ property }) => removeControllers.includes(property))
+      .forEach((c) => c.destroy());
+    if (value == null) {
+      cameraOperator.detachProjection();
+    } else {
+      cameraOperator.attachProjection(projections[value]);
+
+      if (Array.isArray(records[value].media)) {
+        gui
+          .add(cameraOperator.projection, "textureSource", records[value].media)
+          .name("texture")
+          .onChange(async (url) => {
+            const texture = await loadTexture(url);
+            cameraOperator.projection.updateTexture(texture);
+
+            // cameraOperator.projection.material.ground.visible = false;
+            // console.log(
+            //   (cameraOperator.projection.material.ground =
+            //     new THREE.MeshBasicMaterial({ color: 0xff0000 })),
+            // );
+            // cameraOperator.projection.layers.ground.material
+          });
+      }
+      // const textureOptions
+      // gui.add(cameraOperator.projection.camera, "fov", 5, 170).onChange(() => {
+      //   cameraOperator.projection.update();
+      // });
+
+      gui.add(cameraOperator.projection.renderToLayer, "buildings");
+      gui.add(cameraOperator.projection.renderToLayer, "ground");
+      gui.add(cameraOperator.projection.renderToLayer, "plane");
+
+      if (cameraOperator.projection.camera.isOrthographicCamera) return;
+      gui.add(cameraOperator.projection.camera, "fov", 5, 170).onChange(() => {
+        cameraOperator.projection.update();
+      });
+      gui
+        .add(cameraOperator.projection.camera.position, "x", -500, 500)
+        .onChange(() => {
+          cameraOperator.projection.update();
+        });
+      gui
+        .add(cameraOperator.projection.camera.position, "z", -500, 500)
+        .name("y")
+        .onChange(() => {
+          cameraOperator.projection.update();
+        });
+      gui
+        .add(cameraOperator.projection.camera.position, "y")
+        .name("height")
+        .onChange(() => {
+          3;
+          cameraOperator.projection.update();
+        });
+
+      console.log(cameraOperator.projection.camera.rotation.order);
+
+      const rotation = new THREE.Vector3(
+        ...[...cameraOperator.projection.camera.rotation].map(
+          (v) => (v * (180 / Math.PI)) % 180,
+        ),
+      );
+
+      gui
+        .add(rotation, "x", -90, 90)
+        .name("pitch")
+        .onChange((v) => {
+          const current = cameraOperator.projection.camera.rotation.x;
+          const diff = v / (180 / Math.PI) - current;
+          cameraOperator.projection.camera.rotateX(diff);
+          // cameraOperator.projection.camera.rotation.x = v / (180 / Math.PI);
+          // cameraOperator.projection.camera.setRotationFromEuler(
+          //   new THREE.Euler(...rotation, "ZYX"),
+          // );
+          cameraOperator.projection.update();
+        });
+
+      gui
+        .add(rotation, "y", -180, 180)
+        .name("yaw")
+        .onChange((v) => {
+          cameraOperator.projection.camera.rotation.y = v / (180 / Math.PI);
+          // cameraOperator.projection.camera.setRotationFromEuler(
+          //   new THREE.Euler(...rotation, "XYZ"),
+          // );
+          cameraOperator.projection.update();
+        });
+
+      gui
+        .add(rotation, "z", -180, 180)
+        .name("roll")
+        .onChange((v) => {
+          cameraOperator.projection.camera.rotation.z = v / (180 / Math.PI);
+          // cameraOperator.projection.camera.setRotationFromEuler(
+          //   new THREE.Euler(...rotation, "XYZ"),
+          // );
+          cameraOperator.projection.update();
+        });
+
+      gui
+        .add(cameraOperator.projection.camera, "far", 1, 1000)
+        .name("distance")
+        .onChange((v) => {
+          // cameraOperator.projection.camera.rotation.z = v / (180 / Math.PI);
+          // cameraOperator.projection.camera.setRotationFromEuler(
+          //   new THREE.Euler(...rotation, "XYZ"),
+          // );
+          cameraOperator.projection.update();
+        });
+    }
+  });
+  // gui.add(options, keys.fov, 1, 170).onChange((value) => {
+  //   if (cameraOperator.projection == null) return;
+  //   cameraOperator.projection.camera.fov = value;
+  //   cameraOperator.projection.update();
+  // });
 
   window.addEventListener("keydown", async ({ code, shiftKey }) => {
     const digit = /^Digit([0-9])/.exec(code)?.[1];
     if (digit != null) {
-      const index = digit - 1;
-      if (index >= projections.length) return;
-      activeProjection = index;
-      // projections.forEach((projection) => {
-      //   projection.blur();
-      // });
-
-      // projections[activeProjection].focus();
-      cameraOperator.detachProjection();
-      cameraOperator.attachProjection(projections[activeProjection]);
-    }
-    if (code === "Space") {
-      // cameraOperator.fp();
-      if (cameraOperator.projection) {
-        cameraOperator.detachProjection();
+      const index = +digit;
+      const guiController = gui.controllers.find(
+        ({ property }) => property === keys.projection,
+      );
+      if (
+        index >= projections.length ||
+        projections[index] === cameraOperator.projection
+      ) {
+        // cameraOperator.detachProjection();
+        guiController.setValue(null);
       } else {
-        cameraOperator.attachProjection(
-          projections[activeProjection],
-          shiftKey,
-        );
+        // cameraOperator.attachProjection(projections[activeProjection]);
+        guiController.setValue(index);
       }
+      guiController.updateDisplay();
+    }
+    // if (code === "Space") {
+    //   // cameraOperator.fp();
+    //   if (cameraOperator.projection) {
+    //     cameraOperator.detachProjection();
+    //   } else {
+    //     cameraOperator.attachProjection(cameraOperator.projection, shiftKey);
+    //   }
+    // }
+    if (code === "Enter" || code === "Space") {
+      options.fpv = !options.fpv;
+      guiControllerFPV.updateDisplay();
+      cameraOperator.toggle();
+    }
+
+    if (code === "KeyX") {
+      console.log(cameraOperator.camera.position);
+      console.log(cameraOperator.camera.rotation);
     }
 
     if (code === "KeyC") {
@@ -241,4 +433,32 @@ function onWindowResize() {
 
 function update() {
   renderer.render(scene, cameraOperator.camera);
+}
+
+async function loadTexture(url) {
+  const isVideo = /\.(mp4|webm|ogg)$/i.test(url);
+  if (isVideo) {
+    const media = await new Promise((resolve) => {
+      const el = document.createElement("video");
+      el.src = url;
+      // el.crossOrigin = this.crossOrigin;
+      el.playsInline = true;
+      el.muted = true;
+      el.loop = true;
+      el.play();
+      el.addEventListener("playing", () => resolve(el), { once: true });
+    });
+
+    return new THREE.VideoTexture(media);
+  } else {
+    const loader = new THREE.TextureLoader();
+    return await new Promise((resolve) =>
+      loader.load(
+        url,
+        (texture) => resolve(texture),
+        undefined,
+        (err) => console.error(err),
+      ),
+    );
+  }
 }
