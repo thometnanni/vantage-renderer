@@ -18,7 +18,10 @@ export default [
     },
   },
   {
-    media: ["./media/long-story.mp4", "./media/long-story-still.jpg"],
+    media: [
+      "https://media.thometnanni.net/long-story.mp4",
+      "./media/long-story-still.jpg",
+    ],
     type: "image",
     camera: {
       position: [-88.07762977999406, 2.9753309014212492, 51.20231969741984],

@@ -441,7 +441,7 @@ async function loadTexture(url) {
     const media = await new Promise((resolve) => {
       const el = document.createElement("video");
       el.src = url;
-      // el.crossOrigin = this.crossOrigin;
+      el.crossOrigin = true;
       el.playsInline = true;
       el.muted = true;
       el.loop = true;
