@@ -213,10 +213,11 @@ async function init() {
   const camOptions = {
     none: null,
     map: 0,
-    "cam 1": 1,
-    "cam 2": 2,
-    "cam 3": 3,
   };
+
+  for (let i = 1; i < projections.length; i++) {
+    camOptions[`cam ${i}`] = i;
+  }
 
   const gui = new GUI();
   const guiControllerFPV = gui
