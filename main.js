@@ -95,6 +95,7 @@ async function init() {
   groundGeometry.rotateY(Math.PI);
   groundGeometry.rotateX(Math.PI / 2);
   groundGeometry.clearGroups();
+  groundGeometry.addGroup(0, Infinity, 0);
   ground = new THREE.Mesh(groundGeometry, [solidMaterial]);
   scene.add(ground);
 
@@ -298,8 +299,6 @@ async function init() {
           3;
           cameraOperator.projection.update();
         });
-
-      console.log(cameraOperator.projection.camera.rotation.order);
 
       const rotation = new THREE.Vector3(
         ...[...cameraOperator.projection.camera.rotation].map(
