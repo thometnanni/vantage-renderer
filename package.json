@@ -19,7 +19,7 @@
     "@turf/intersect": "^7.1.0",
     "@turf/rhumb-bearing": "^7.1.0",
     "@turf/rhumb-distance": "^7.1.0",
-    "three": "^0.168.0",
+    "three": "^0.172.0",
     "three-projected-material": "github:fidelthomet/three-projected-material"
   }
 }
