@@ -29,7 +29,8 @@ async function init() {
   scene.background = new THREE.Color(0xcccccc);
   // scene.fog = new THREE.FogExp2(0xcccccc, 0.002);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer = new THREE.WebGLRenderer({ antialias: false });
+
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setAnimationLoop(update);
