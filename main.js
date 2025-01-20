@@ -1,18 +1,12 @@
 import * as THREE from 'three'
 
-import center from '@turf/center'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { GUI } from 'three/addons/libs/lil-gui.module.min'
-import { generateBuildings, toMeters } from './city'
 
 import CameraOperator from './cameraOperator'
 import Projection from './Projection'
 
 import records from './records'
-
-// const geojsonUrl = "./nk-arcaden.json";
-const geojsonUrl = './hermannstrasse.json'
-const imageUrl = './media/warthe-helper.png'
 
 let scene,
   renderer,
@@ -41,32 +35,15 @@ async function init () {
     [-1.8891596839718918, -1.266917979002451, -1.9033664838293778, 'XYZ']
   )
 
-  const map = await fetch(geojsonUrl).then(d => d.json())
-  const mapCenter = center(map)
-
-  const buildingGeometry = generateBuildings(
-    map,
-    mapCenter,
-    [13.4197998046875, 52.46605036188952, 13.43902587890625, 52.47608904123904]
-  )
-
-  const wireframeMaterial = new THREE.MeshPhongMaterial({
-    color: 0xff0000
-  })
-
   const solidMaterial = new THREE.MeshPhongMaterial({
     color: 0xeeeeee
   })
 
-  // const geo = new THREE.EdgesGeometry(buildingGeometry)
   const lineMaterial = new THREE.LineBasicMaterial({
     color: 0xaaaaaa
   })
 
-  // const wireframe = new THREE.LineSegments(geo, lineMaterial)
-  // const solidMesh = new THREE.Mesh(buildingGeometry, solidMaterial)
-
-  meshes = unpackMeshes(await loadScene('public/media/scene.gltf'))
+  meshes = unpackMeshes(await loadScene('media/scene.gltf'))
 
   meshes.forEach(mesh => {
     // reset materials
@@ -84,6 +61,8 @@ async function init () {
   })
 
   scene.add(...meshes)
+
+  console.log(scene)
 
   const bbox = new THREE.Box3().setFromObject(scene)
 
@@ -114,7 +93,6 @@ async function init () {
         return new Projection({
           renderer,
           scene,
-          // layers: { buildings, ground },
           layers: Object.fromEntries(meshes.map(m => [m.name, m])),
           texture,
           textureSource: Array.isArray(record.media)
@@ -127,8 +105,7 @@ async function init () {
           ratio,
           far,
           orthographic,
-          size,
-          center: mapCenter
+          size
         })
       })
     )
@@ -152,16 +129,6 @@ async function init () {
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8)
   scene.add(ambientLight)
 
-  // HELPER
-  // const dot = new THREE.Mesh(
-  //   new THREE.SphereGeometry(4),
-  //   new THREE.MeshBasicMaterial({ color: 0xff0000 }),
-  // );
-  // const coordinate = [13.422461, 52.472694];
-  // const local = toMeters(mapCenter, mapCenter);
-  // dot.position.set(local.x, 0, local.y);
-  // scene.add(dot);
-
   window.addEventListener('resize', onWindowResize)
 
   const keys = {
@@ -172,7 +139,6 @@ async function init () {
   const options = {
     fpv: false,
     [keys.projection]: null
-    // [keys.fov]: 50,
   }
 
   const camOptions = {
@@ -222,25 +188,13 @@ async function init () {
           .onChange(async url => {
             const texture = await loadTexture(url)
             cameraOperator.projection.updateTexture(texture)
-
-            // cameraOperator.projection.material.ground.visible = false;
-            // console.log(
-            //   (cameraOperator.projection.material.ground =
-            //     new THREE.MeshBasicMaterial({ color: 0xff0000 })),
-            // );
-            // cameraOperator.projection.layers.ground.material
           })
       }
-      // const textureOptions
-      // gui.add(cameraOperator.projection.camera, "fov", 5, 170).onChange(() => {
-      //   cameraOperator.projection.update();
-      // });
 
       meshes.forEach(m =>
         gui.add(cameraOperator.projection.renderToLayer, m.name)
       )
-      // gui.add(cameraOperator.projection.renderToLayer, 'buildings')
-      // gui.add(cameraOperator.projection.renderToLayer, 'ground')
+
       gui.add(cameraOperator.projection.renderToLayer, 'plane')
 
       if (!cameraOperator.projection.camera.isOrthographicCamera) {
@@ -282,10 +236,6 @@ async function init () {
           const current = cameraOperator.projection.camera.rotation.x
           const diff = v / (180 / Math.PI) - current
           cameraOperator.projection.camera.rotateX(diff)
-          // cameraOperator.projection.camera.rotation.x = v / (180 / Math.PI);
-          // cameraOperator.projection.camera.setRotationFromEuler(
-          //   new THREE.Euler(...rotation, "ZYX"),
-          // );
           cameraOperator.projection.update()
         })
 
@@ -294,9 +244,6 @@ async function init () {
         .name('yaw')
         .onChange(v => {
           cameraOperator.projection.camera.rotation.y = v / (180 / Math.PI)
-          // cameraOperator.projection.camera.setRotationFromEuler(
-          //   new THREE.Euler(...rotation, "XYZ"),
-          // );
           cameraOperator.projection.update()
         })
 
@@ -305,9 +252,6 @@ async function init () {
         .name('roll')
         .onChange(v => {
           cameraOperator.projection.camera.rotation.z = v / (180 / Math.PI)
-          // cameraOperator.projection.camera.setRotationFromEuler(
-          //   new THREE.Euler(...rotation, "XYZ"),
-          // );
           cameraOperator.projection.update()
         })
 
@@ -315,19 +259,10 @@ async function init () {
         .add(cameraOperator.projection.camera, 'far', 1, 1000)
         .name('distance')
         .onChange(v => {
-          // cameraOperator.projection.camera.rotation.z = v / (180 / Math.PI);
-          // cameraOperator.projection.camera.setRotationFromEuler(
-          //   new THREE.Euler(...rotation, "XYZ"),
-          // );
           cameraOperator.projection.update()
         })
     }
   })
-  // gui.add(options, keys.fov, 1, 170).onChange((value) => {
-  //   if (cameraOperator.projection == null) return;
-  //   cameraOperator.projection.camera.fov = value;
-  //   cameraOperator.projection.update();
-  // });
 
   window.addEventListener('keydown', async ({ code, shiftKey }) => {
     const digit = /^Digit([0-9])/.exec(code)?.[1]
@@ -348,14 +283,7 @@ async function init () {
       }
       guiController.updateDisplay()
     }
-    // if (code === "Space") {
-    //   // cameraOperator.fp();
-    //   if (cameraOperator.projection) {
-    //     cameraOperator.detachProjection();
-    //   } else {
-    //     cameraOperator.attachProjection(cameraOperator.projection, shiftKey);
-    //   }
-    // }
+
     if (code === 'Enter' || code === 'Space') {
       options.fpv = !options.fpv
       guiControllerFPV.updateDisplay()

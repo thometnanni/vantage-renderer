@@ -10,13 +10,11 @@ import {
   RGBAFormat,
   Mesh,
   PlaneGeometry,
-  BoxGeometry,
   Vector2,
   OrthographicCamera,
   DoubleSide
 } from 'three'
 
-import { toMeters } from './city'
 import ProjectedMaterial from 'three-projected-material'
 
 export default class Projection {
@@ -57,9 +55,6 @@ export default class Projection {
       ? new OrthographicCamera(...bounds, 0, far)
       : new PerspectiveCamera(fov, ratio, near, far)
 
-    // this.camera.rotation.order = "YXZ";
-    //
-
     this.camera.position.set(...cameraPosition)
     this.camera.rotation.set(...cameraRotation)
 
@@ -78,40 +73,16 @@ export default class Projection {
 
     this.plane = new Mesh(new PlaneGeometry(1, 1), [])
 
-    // this.plane.geometry.addGroup(0, Infinity, 0);
-    // this.plane.material.push(
-    //   new MeshBasicMaterial({
-    //     // transparent: true,
-    //     // opacity: 0.5,
-    //     // depthWrite: false,
-    //     // map: texture,
-    //     color: 0xffffff,
-    //   }),
-    // );
-
     this.plane.geometry.addGroup(0, Infinity, 0)
     this.plane.material.push(
       new MeshBasicMaterial({
         transparent: true,
         opacity: 0.9,
-        // depthWrite: false,
-        // map: texture,
         color: 0xffffff,
         side: DoubleSide
       })
-      // new MeshBasicMaterial({
-      //   // transparent: true,
-      //   // opacity: 0,
-      //   depthWrite: true,
-      //   map: this.renderTarget.depthTexture,
-      //   // color: 0xff0000,
-      // }),
     )
 
-    // new MeshBasicMaterial({ map: this.renderTarget.depthTexture }),
-    // this.plane = new Mesh(new PlaneGeometry(1, 1), [
-    //   new MeshBasicMaterial({ map: this.renderTarget.depthTexture }),
-    // ]);
     this.scene.add(this.plane)
 
     this.layers.plane = this.plane
@@ -129,7 +100,7 @@ export default class Projection {
         transparent: true,
         depthMap: this.renderTarget.depthTexture
       })
-      // if (layer === "plane") this.material[layer].depthWrite = true;
+
       this.layers[layer].geometry.addGroup(
         0,
         Infinity,
@@ -151,26 +122,16 @@ export default class Projection {
     )
 
     this.helper = new CameraHelper(this.camera)
-    this.#setHelperColor(0x0000ff)
+    this.#setHelperColor(0x00ff00)
     this.helper.visible = false
   }
 
   blur = () => {
     this.helper.visible = false
-    // this.#setHelperColor(0xffffff);
   }
 
   focus = () => {
-    console.log('focus')
     this.helper.visible = true
-    // this.#setHelperColor(0x0000ff);
-    // this.helper.setColors(
-    //   this.#helperColorActive,
-    //   this.#helperColorActive,
-    //   this.#helperColorActive,
-    //   this.#helperColorActive,
-    //   this.#helperColorActive,
-    // );
   }
 
   #setHelperColor = color => {
@@ -200,8 +161,16 @@ export default class Projection {
 
   updatePlane = () => {
     this.plane.rotation.set(...this.camera.rotation)
-    this.plane.position.set(...this.camera.position)
 
+    const position = this.camera.isOrthographicCamera
+      ? [
+          (this.camera.top + this.camera.bottom) / 2,
+          this.camera.position.y,
+          (this.camera.right + this.camera.left) / 2
+        ]
+      : this.camera.position
+
+    this.plane.position.set(...position)
     const scale = this.camera.isOrthographicCamera
       ? [
           this.camera.right - this.camera.left,
