@@ -1,10 +1,11 @@
 import * as THREE from 'three'
 
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { GUI } from 'three/addons/libs/lil-gui.module.min'
 
 import CameraOperator from './cameraOperator'
 import Projection from './Projection'
+
+import { loadTexture, loadScene, unpackMeshes } from './src/utils'
 
 import records from './records'
 
@@ -26,14 +27,9 @@ async function init () {
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(window.innerWidth, window.innerHeight)
   renderer.setAnimationLoop(update)
-
   document.body.appendChild(renderer.domElement)
 
-  cameraOperator = new CameraOperator(
-    renderer,
-    [-118.89, 28.07, 14.24],
-    [-1.8891596839718918, -1.266917979002451, -1.9033664838293778, 'XYZ']
-  )
+  cameraOperator = new CameraOperator(renderer)
 
   const solidMaterial = new THREE.MeshPhongMaterial({
     color: 0xeeeeee
@@ -104,8 +100,7 @@ async function init () {
           fov,
           ratio,
           far,
-          orthographic,
-          size
+          orthographic
         })
       })
     )
@@ -330,59 +325,4 @@ function onWindowResize () {
 
 function update () {
   renderer.render(scene, cameraOperator.camera)
-}
-
-async function loadTexture (url) {
-  const isVideo = /\.(mp4|webm|ogg)$/i.test(url)
-  if (isVideo) {
-    const media = await new Promise(resolve => {
-      const el = document.createElement('video')
-      el.src = url
-      el.crossOrigin = true
-      el.playsInline = true
-      el.muted = true
-      el.loop = true
-      el.play()
-      el.addEventListener('playing', () => resolve(el), { once: true })
-    })
-
-    return new THREE.VideoTexture(media)
-  } else {
-    const loader = new THREE.TextureLoader()
-    return await new Promise(resolve =>
-      loader.load(
-        url,
-        texture => resolve(texture),
-        undefined,
-        err => console.error(err)
-      )
-    )
-  }
-}
-
-async function loadScene (url) {
-  const loader = new GLTFLoader()
-
-  const gltf = await new Promise(resolve =>
-    loader.load(
-      url,
-      gltf => resolve(gltf),
-      undefined,
-      err => console.error(err)
-    )
-  )
-
-  return gltf.scene
-}
-
-function unpackMeshes (object) {
-  if (object.isGroup) {
-    return object.children
-      .map(o => unpackMeshes(o))
-      .flat()
-      .filter(o => o != null)
-  }
-  if (object.isMesh) {
-    return [object]
-  }
 }

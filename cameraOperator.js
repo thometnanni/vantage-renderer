@@ -9,16 +9,19 @@ export default class CameraOperator {
   mapControls
   projection
 
-  constructor (renderer, mapCameraPosition = [0, 100, -100], mapCameraRotation) {
-    this.renderer = renderer
+  constructor (renderer, mapCameraPosition = [250, 500, 0]) {
+    // this.renderer = renderer
     this.mapCamera.position.set(...mapCameraPosition)
-    if (mapCameraRotation) {
-      this.mapCamera.rotation.set(mapCameraRotation)
-    }
+    // if (mapCameraRotation) {
+    //   this.mapCamera.rotation.set(mapCameraRotation)
+    // }
 
-    this.mapControls = new MapControls(this.mapCamera, this.renderer.domElement)
+    this.mapCamera.rotation.set(Math.PI / 2, 0, 0, 'YXZ')
+
+    this.mapControls = new MapControls(this.mapCamera, renderer.domElement)
     this.mapControls.minDistance = 10
     this.mapControls.maxDistance = 1000
+    // this.mapControls.target = new Vector3(0, 0, 0)
 
     this.fpControls = new PointerLockControls(this.fpCamera, document.body)
 

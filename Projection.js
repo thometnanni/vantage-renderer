@@ -32,21 +32,21 @@ export default class Projection {
   constructor ({
     renderer,
     scene,
-    layers,
+    layers = [],
     texture,
     cameraPosition = [0, 1.8, 0],
-    cameraRotation = [0, 0, 1],
+    cameraRotation = [0, 0, 0, 'YXZ'],
     fov = 60,
-    bounds,
+    bounds = [100, -100, -100, 100],
     ratio = 16 / 9,
     far = 150,
     orthographic = false,
-    size = 100,
-    center,
-    textureSource
+    textureSource,
+    screen
   } = {}) {
     this.renderer = renderer
     this.scene = scene
+    this.screen = screen
 
     const near = 3
     this.layers = layers
@@ -71,22 +71,24 @@ export default class Projection {
     this.renderTarget.depthTexture = new DepthTexture()
     this.renderTarget.depthTexture.type = FloatType
 
-    this.plane = new Mesh(new PlaneGeometry(1, 1), [])
+    if (this.screen) {
+      this.plane = new Mesh(new PlaneGeometry(1, 1), [])
 
-    this.plane.geometry.addGroup(0, Infinity, 0)
-    this.plane.material.push(
-      new MeshBasicMaterial({
-        transparent: true,
-        opacity: 0.9,
-        color: 0xffffff,
-        side: DoubleSide
-      })
-    )
+      this.plane.geometry.addGroup(0, Infinity, 0)
+      this.plane.material.push(
+        new MeshBasicMaterial({
+          transparent: true,
+          opacity: 0.9,
+          color: 0xffffff,
+          side: DoubleSide
+        })
+      )
 
-    this.scene.add(this.plane)
+      this.scene.add(this.plane)
 
-    this.layers.plane = this.plane
-    this.updatePlane()
+      this.layers.plane = this.plane
+      this.updatePlane()
+    }
     this.createDepthMap()
 
     this.texture = texture
@@ -160,6 +162,7 @@ export default class Projection {
   }
 
   updatePlane = () => {
+    if (!this.screen) return
     this.plane.rotation.set(...this.camera.rotation)
 
     const position = this.camera.isOrthographicCamera

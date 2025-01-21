@@ -1,39 +1,82 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vantage</title>
-  </head>
 
-  <body>
-    <div id="app"></div>
-    <div class="map-info">
-      ©️
-      <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
-      contributors;
-      <a href="https://gdi.berlin.de/geonetwork/srv/ger/catalog.search#/metadata/01e2749e-7dca-3492-8f95-29d360c3f1aa">Geoportal Berlin</href>
-    </div>
-    <script type="module" src="/main.js"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <link
+    rel="icon"
+    type="image/svg+xml"
+    href="/vite.svg"
+  />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>Vantage</title>
+</head>
 
-  <style>
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-    }
+<body>
+  <vantage-renderer scene="./media/scene.gltf">
+    <vantage-projection
+      src="./media/map.png"
+      orthographic
+      position="0 500 0"
+      rotation="-1.5707963268 -1.5707963268 0"
+      far="500"
+    ></vantage-projection>
+    <vantage-projection
+      src="https://media.thometnanni.net/long-story.mp4"
+      position="-200 40.9753309014212492 51.20231969741984"
+      rotation="-1 0 0.0"
+      fov="60"
+      far="150"
+      screen
+    ></vantage-projection>
+    <vantage-projection
+      src="./media/IMG_3271.jpeg"
+      position="-35.3 1.7 33.6"
+      rotation="0.2 1.57 0.0"
+      fov="53.1"
+      far="73.25"
+      screen
+      layers="Buildings Ground"
+    ></vantage-projection>
+  </vantage-renderer>
+  <div class="map-info">
+    ©️
+    <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
+    contributors
+  </div>
 
-    .map-info {
-      position: absolute;
-      bottom: 0;
-      right: 0;
-      background-color: white;
-      font-family: sans-serif;
-      padding: 2px;
-      font-size: 12px
-    }
-  </style>
+
+
+  <!-- <script
+    type="module"
+    src="/renderer.js"
+  ></script> -->
+  <script
+    type="module"
+    src="/src/main.js"
+  ></script>
+</body>
+
+<style>
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+  }
+
+  .map-info {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background-color: white;
+    font-family: sans-serif;
+    padding: 2px;
+    font-size: 12px
+  }
+</style>
+
 </html>
