@@ -1,30 +1,16 @@
-import {
-  LineBasicMaterial,
-  MeshPhongMaterial,
-  Scene,
-  WebGLRenderer,
-  LineSegments,
-  EdgesGeometry,
-  DirectionalLight,
-  AmbientLight,
-  Box3
-} from 'three'
+import { Scene, WebGLRenderer, DirectionalLight, AmbientLight } from 'three'
 import CameraOperator from '../cameraOperator'
-import { loadTexture, loadScene, unpackMeshes } from './utils'
+import { loadTexture, parseAttribute, setupScene, setupLights } from './utils'
 import Projection from '../Projection'
 
 class VantageRenderer extends HTMLElement {
   root
   scene = new Scene()
-  sceneUrl
   renderer = new WebGLRenderer()
   cameraOperator
-  solidMaterial = new MeshPhongMaterial({ color: 0xeeeeee })
-  lineMaterial = new LineBasicMaterial({ color: 0xaaaaaa })
   meshes
   bounds
   projections = {}
-  projectionsData = {}
 
   constructor () {
     super()
@@ -34,7 +20,16 @@ class VantageRenderer extends HTMLElement {
   async attributeChangedCallback (name, _oldValue, value) {
     switch (name) {
       case 'scene':
-        this.sceneUrl = value
+        const { base, bounds } = await setupScene(value)
+        this.scene.getObjectByName('vantage:base')?.removeFromParent()
+        this.scene.add(base)
+        this.bounds = bounds
+        Object.values(this.projections).forEach(projection => {
+          projection.createLayers()
+          projection.update()
+          if (projection.bounds == null)
+            projection.bounds = { bounds, auto: true }
+        })
         break
       default:
         break
@@ -42,94 +37,48 @@ class VantageRenderer extends HTMLElement {
   }
 
   async connectedCallback () {
-    this.root = this.attachShadow({ mode: 'closed' })
-    this.root.appendChild(this.renderer.domElement)
-
-    this.addEventListener('vantage:attach-projection', e =>
-      this.attachProjection(e.detail)
-    )
-    this.addEventListener('vantage:update-projection', e => console.log(e))
-
     this.renderer.setPixelRatio(window.devicePixelRatio)
     this.renderer.setSize(window.innerWidth, window.innerHeight)
     this.renderer.setAnimationLoop(this.update)
 
+    this.attachShadow({ mode: 'open' }).appendChild(this.renderer.domElement)
+
+    this.addEventListener('vantage:add-projection', e =>
+      this.addProjection(e.detail)
+    )
+    this.addEventListener('vantage:update-projection', e =>
+      this.updateProjection(e.detail)
+    )
+    this.addEventListener('vantage:remove-projection', e =>
+      this.removeProjection(e.detail)
+    )
+
     this.cameraOperator = new CameraOperator(this.renderer)
 
-    this.meshes = unpackMeshes(await loadScene(this.sceneUrl))
+    this.scene.add(setupLights())
 
-    this.meshes.forEach(mesh => {
-      // reset materials
-      mesh.geometry.clearGroups()
-      mesh.geometry.addGroup(0, Infinity, 0)
-      mesh.material = [this.solidMaterial]
-
-      // create wireframe
-      this.scene.add(
-        new LineSegments(new EdgesGeometry(mesh.geometry), this.lineMaterial)
-      )
-    })
-
-    this.scene.add(...this.meshes)
-
-    const bbox = new Box3().setFromObject(this.scene)
-    this.bounds = [bbox.max.z, bbox.min.z, bbox.min.x, bbox.max.x]
-
-    console.log(this.bounds)
-
-    console.log('scene ready')
-
-    for (const id in this.projectionsData) {
-      this.addProjection(id, this.projectionsData[id])
-    }
-
-    // lights
-    const dirLight1 = new DirectionalLight(0xffffff, 3)
-    dirLight1.position.set(1, 1, 1)
-    this.scene.add(dirLight1)
-
-    const dirLight2 = new DirectionalLight(0xffffff, 3)
-    dirLight2.position.set(-1, -1, -1)
-    this.scene.add(dirLight2)
-
-    const ambientLight = new AmbientLight(0xffffff, 0.8)
-    this.scene.add(ambientLight)
+    console.log('----   READY   ----')
   }
 
   update = () => {
     this.renderer.render(this.scene, this.cameraOperator.camera)
   }
 
-  attachProjection ({ id, attributes }) {
-    this.projectionsData[id] = attributes
-  }
-
-  async addProjection (id, attributes) {
+  async addProjection ({ id, attributes }) {
     const texture = await loadTexture(attributes.src)
 
     const width = texture.source.data.videoWidth ?? texture.source.data.width
     const height = texture.source.data.videoHeight ?? texture.source.data.height
 
-    console.log(
-      attributes.layers,
-      this.meshes.filter(
-        ({ name }) =>
-          attributes.layers == null || attributes.layers.includes(name)
-      ),
-      this.meshes
-    )
-
     const projection = new Projection({
+      id,
+      attributes,
       renderer: this.renderer,
       scene: this.scene,
-      layers: this.meshes.filter(
-        ({ name }) =>
-          attributes.layers == null || attributes.layers.includes(name)
-      ),
-      // layers: Object.fromEntries(meshes.map(m => [m.name, m])),
+      layers: attributes.layers,
       texture,
-      cameraPosition: attributes.position,
-      cameraRotation: attributes.rotation,
+      position: attributes.position,
+      rotation: attributes.rotation,
       bounds: attributes.bounds ?? this.bounds,
       fov: attributes.fov,
       ratio: width / height,
@@ -142,6 +91,30 @@ class VantageRenderer extends HTMLElement {
     this.scene.add(projection.helper)
 
     this.projections[id] = projection
+  }
+
+  async updateProjection ({ id, property, value, oldValue }) {
+    const projection = this.projections[id]
+    if (projection == null) return
+    switch (property) {
+      case 'src':
+        const texture = await loadTexture(value)
+        projection.texture = texture
+        break
+      case 'bounds':
+        projection.bounds = value
+          ? { bounds: value, auto: false }
+          : { bounds: this.bounds, auto: true }
+        break
+      default:
+        projection[property] = value
+      // projection.update()
+    }
+  }
+
+  removeProjection ({ id }) {
+    this.projections[id].destroy()
+    delete this.projections[id]
   }
 }
 
@@ -160,16 +133,21 @@ class VantageProjection extends HTMLElement {
     'far',
     'screen',
     'layers',
-    'screen'
+    'bounds'
   ]
   async attributeChangedCallback (name, oldValue, value) {
     if (this.projectionId == null) return
+    if (name === 'orthographic') {
+      this.destroy()
+      this.create()
+      return
+    }
     this.dispatchEvent(
       new CustomEvent('vantage:update-projection', {
         bubbles: true,
         detail: {
           id: this.projectionId,
-          name,
+          property: name,
           value: parseAttribute(name, value),
           oldValue: parseAttribute(name, oldValue)
         }
@@ -179,7 +157,11 @@ class VantageProjection extends HTMLElement {
 
   async connectedCallback () {
     this.projectionId = crypto.randomUUID().split('-')[0]
+    this.vantageRenderer = this.parentElement
+    this.create()
+  }
 
+  create () {
     const attributes = Object.fromEntries(
       [...this.attributes].map(({ name, value }) => [
         name,
@@ -187,7 +169,7 @@ class VantageProjection extends HTMLElement {
       ])
     )
 
-    const event = new CustomEvent('vantage:attach-projection', {
+    const event = new CustomEvent('vantage:add-projection', {
       bubbles: true,
       detail: {
         id: this.projectionId,
@@ -197,26 +179,19 @@ class VantageProjection extends HTMLElement {
 
     this.dispatchEvent(event)
   }
-}
 
-function parseAttribute (name, value) {
-  switch (name) {
-    case 'position':
-      return value.split(' ').map(v => +v)
-    case 'rotation':
-      return [...value.split(' ').map(v => +v), 'YXZ']
-    case 'layers':
-      return [...value.matchAll(/'([^']+)'|"([^"]+)"|([^ ]+)/g)].map(
-        d => d[1] ?? d[2] ?? d[3]
-      )
-    case 'fov':
-    case 'far':
-      return +value
-    case 'orthographic':
-    case 'screen':
-      return value === '' || value === 'true'
-    default:
-      return value
+  disconnectedCallback () {
+    this.destroy()
+  }
+
+  destroy () {
+    const event = new CustomEvent('vantage:remove-projection', {
+      bubbles: true,
+      detail: {
+        id: this.projectionId
+      }
+    })
+    this.vantageRenderer.dispatchEvent(event)
   }
 }
 
