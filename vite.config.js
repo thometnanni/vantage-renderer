@@ -1,5 +1,14 @@
-import { defineConfig } from "vite";
-// https://vitejs.dev/config/
+// vite.config.js
+import { resolve } from 'path'
+import { defineConfig } from 'vite'
+
 export default defineConfig({
-  base: "./",
-});
+  publicDir: false,
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/main.js'),
+      name: 'vantage-renderer',
+      fileName: 'vantage-renderer'
+    }
+  }
+})
