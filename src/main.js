@@ -26,10 +26,10 @@ class VantageRenderer extends HTMLElement {
         this.scene.add(base)
         this.bounds = bounds
         Object.values(this.projections).forEach(projection => {
-          projection.createLayers()
-          projection.update()
           if (projection.bounds == null)
             projection.bounds = { bounds, auto: true }
+          projection.createLayers()
+          projection.update()
         })
         break
       case 'first-person':
