@@ -8,8 +8,12 @@ export default class CameraOperator {
   fpCamera = new PerspectiveCamera(60, innerWidth / innerHeight, 1, 10000)
   mapControls
   projection
+  #firstPerson
 
-  constructor (renderer, mapCameraPosition = [250, 500, 0]) {
+  constructor (
+    renderer,
+    { mapCameraPosition = [250, 500, 0], firstPerson, domElement }
+  ) {
     // this.renderer = renderer
     this.mapCamera.position.set(...mapCameraPosition)
     // if (mapCameraRotation) {
@@ -23,9 +27,15 @@ export default class CameraOperator {
     this.mapControls.maxDistance = 1000
     // this.mapControls.target = new Vector3(0, 0, 0)
 
-    this.fpControls = new PointerLockControls(this.fpCamera, document.body)
+    this.fpControls = new PointerLockControls(
+      this.fpCamera,
+      // renderer.domElement
+      domElement
+      // this.domElement
+    )
 
     this.fpControls.addEventListener('unlock', () => {
+      console.log('unlock')
       this.map()
     })
 
@@ -35,6 +45,7 @@ export default class CameraOperator {
 
     this.fpControls.enabled = false
 
+    this.firstPerson = firstPerson
     document.addEventListener('keydown', this.keydown)
     document.addEventListener('mousedown', this.mousedown)
   }
@@ -43,7 +54,18 @@ export default class CameraOperator {
     return this.mapControls.enabled ? this.mapCamera : this.fpCamera
   }
 
+  set firstPerson (firstPerson) {
+    console.log('first persopn', firstPerson)
+    if (firstPerson) this.fp()
+    else this.map()
+  }
+
+  get firstPerson () {
+    return this.#firstPerson
+  }
+
   map () {
+    console.log('map', this.mapControls.enabled)
     if (this.mapControls.enabled) return
 
     this.mapControls.enabled = true
@@ -53,6 +75,7 @@ export default class CameraOperator {
   }
 
   fp () {
+    console.log('fp', this.fpControls.enabled)
     if (this.fpControls.enabled) return
 
     this.mapControls.enabled = false
@@ -61,6 +84,7 @@ export default class CameraOperator {
   }
 
   toggle = () => {
+    console.log('toggle')
     if (this.mapControls.enabled) this.fp()
     else this.map()
   }

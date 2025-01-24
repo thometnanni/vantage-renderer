@@ -16,8 +16,9 @@ class VantageRenderer extends HTMLElement {
     super()
   }
 
-  static observedAttributes = ['scene']
-  async attributeChangedCallback (name, _oldValue, value) {
+  static observedAttributes = ['scene', 'first-person']
+  async attributeChangedCallback (name, _oldValue, newValue) {
+    const value = parseAttribute(name, newValue)
     switch (name) {
       case 'scene':
         const { base, bounds } = await setupScene(value)
@@ -30,6 +31,10 @@ class VantageRenderer extends HTMLElement {
           if (projection.bounds == null)
             projection.bounds = { bounds, auto: true }
         })
+        break
+      case 'first-person':
+        if (!this.cameraOperator) return
+        this.cameraOperator.firstPerson = value
         break
       default:
         break
@@ -53,7 +58,13 @@ class VantageRenderer extends HTMLElement {
       this.removeProjection(e.detail)
     )
 
-    this.cameraOperator = new CameraOperator(this.renderer)
+    this.cameraOperator = new CameraOperator(this.renderer, {
+      firstPerson: parseAttribute(
+        'first-person',
+        this.attributes['first-person']?.value
+      ),
+      domElement: this
+    })
 
     this.scene.add(setupLights())
 
@@ -84,7 +95,9 @@ class VantageRenderer extends HTMLElement {
       ratio: width / height,
       far: attributes.far,
       orthographic: attributes.orthographic,
-      screen: attributes.screen
+      screen: attributes.screen,
+      focus: attributes.focus,
+      passThrough: attributes['pass-through']
     })
 
     projection.update()
@@ -133,7 +146,9 @@ class VantageProjection extends HTMLElement {
     'far',
     'screen',
     'layers',
-    'bounds'
+    'bounds',
+    'focus',
+    'pass-through'
   ]
   async attributeChangedCallback (name, oldValue, value) {
     if (this.projectionId == null) return

@@ -33,6 +33,7 @@
       far="150"
       layers="Ground"
       screen
+      focus
     ></vantage-projection>
     <vantage-projection
       src="./airwars/test_2.png"
@@ -42,6 +43,7 @@
       far="73.25"
       layers="Buildings Ground"
       screen
+      pass-through
     ></vantage-projection>
   </vantage-renderer>
   <div class="map-info">
@@ -49,6 +51,7 @@
     <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
     contributors
   </div>
+  <button onclick="toggleFirstPerson()">Toggle First Person</button>
 
 
 
@@ -60,6 +63,14 @@
     type="module"
     src="/src/main.js"
   ></script>
+  <script>
+    function toggleFirstPerson() {
+      const renderer = document.querySelector('vantage-renderer')
+      const value = renderer.attributes['first-person']?.value
+
+      renderer.setAttribute('first-person', value === '' || value === 'true' ? 'false' : 'true')
+    }
+  </script>
 </body>
 
 <style>

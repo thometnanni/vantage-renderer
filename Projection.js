@@ -34,6 +34,7 @@ export default class Projection {
   attributes
   id
   ready = false
+  #focus
 
   constructor ({
     renderer,
@@ -51,7 +52,8 @@ export default class Projection {
     textureSource,
     screen,
     attributes,
-    id
+    id,
+    focus
   } = {}) {
     this.id = id
     this.renderer = renderer
@@ -88,13 +90,12 @@ export default class Projection {
     this.textureSource = textureSource
 
     this.createLayers()
-
     this.screen = screen
     this.layers = layers
 
     this.helper = new CameraHelper(this.camera)
     this.#setHelperColor(0x00ff00)
-    this.helper.visible = false
+    this.focus = focus
 
     this.ready = true
   }
@@ -182,12 +183,14 @@ export default class Projection {
     return this.#screen
   }
 
-  blur = () => {
-    this.helper.visible = false
+  set focus (focus) {
+    console.log('set focus', focus)
+    this.#focus = focus
+    this.helper.visible = focus
   }
 
-  focus = () => {
-    this.helper.visible = true
+  get focus () {
+    return this.#focus
   }
 
   #setHelperColor = color => {

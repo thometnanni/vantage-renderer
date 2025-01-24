@@ -81,6 +81,9 @@ function parseAttribute (name, value) {
       return +value
     case 'orthographic':
     case 'screen':
+    case 'focus':
+    case 'pass-through':
+    case 'first-person':
       return value === '' || value === 'true'
     default:
       return value
