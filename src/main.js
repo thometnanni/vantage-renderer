@@ -49,7 +49,7 @@ class VantageRenderer extends HTMLElement {
     this.attachShadow({ mode: 'open' }).appendChild(this.renderer.domElement)
 
     this.addEventListener('vantage:add-projection', e =>
-      this.addProjection(e.detail)
+      setTimeout(() => this.addProjection(e.detail), 1000)
     )
     this.addEventListener('vantage:update-projection', e =>
       this.updateProjection(e.detail)
