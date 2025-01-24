@@ -184,7 +184,6 @@ export default class Projection {
   }
 
   set focus (focus) {
-    console.log('set focus', focus)
     this.#focus = focus
     this.helper.visible = focus === true
   }
