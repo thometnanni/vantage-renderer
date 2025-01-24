@@ -2,94 +2,175 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <link
-    rel="icon"
-    type="image/svg+xml"
-    href="/vite.svg"
-  />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
-  <title>Vantage</title>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vantage Renderer</title>
 </head>
 
 <body>
   <vantage-renderer scene="./airwars/scene.gltf">
-    <vantage-projection
-      src="./airwars/map1.png"
-      orthographic
-      position="0 500 0"
-      rotation="-1.5707963268 -1.5707963268 0"
-      far="501"
-    ></vantage-projection>
+    <vantage-projection id="projection-1" src="./airwars/map.png" orthographic position="0 500 0"
+      rotation="-1.5707963268 -1.5707963268 0" far="501"></vantage-projection>
 
-    <vantage-projection
-      src="./airwars/test_1.png"
-      position="-200 40.9753309014212492 51.20231969741984"
-      rotation="-1 0 0.0"
-      fov="60"
-      far="150"
-      layers="Ground"
-      screen
-      focus
-    ></vantage-projection>
-    <vantage-projection
-      src="./airwars/test_2.png"
-      position="-35.3 40.7 33.6"
-      rotation="-0.4 1.57 0.0"
-      fov="53.1"
-      far="73.25"
-      layers="Buildings Ground"
-      screen
-      pass-through
-    ></vantage-projection>
+    <vantage-projection id="projection-2" src="./airwars/test_1.png" position="100 20 100" rotation="0 0.5 0" fov="60"
+      far="150" screen focus></vantage-projection>
+
+    <vantage-projection id="projection-3" src="./airwars/test_2.png" position="-35.3 40.7 33.6" rotation="-0.4 1.57 0.0"
+      fov="53.1" far="73.25" layers="Buildings Ground" screen pass-through></vantage-projection>
   </vantage-renderer>
-  <div class="map-info">
+
+  <div class="controls">
+    <div>
+      <h3>Media</h3>
+      <select id="projectionSelector">
+        <option value="projection-2">Projection 2 (Test 1)</option>
+        <option value="projection-3">Projection 3 (Test 2)</option>
+        <option value="projection-1">Projection 1 (Map)</option>
+      </select>
+    </div>
+
+    <h3>Camera Positioning</h3>
+    <h4>Position</h4>
+    <label>X: <input id="posX" type="number" step="1"></label>
+    <label>Y: <input id="posY" type="number" step="1"></label>
+    <label>Z: <input id="posZ" type="number" step="1"></label>
+
+    <h4>Rotation</h4>
+    <label>X: <input id="rotX" type="number" step="0.1"></label>
+    <label>Y: <input id="rotY" type="number" step="0.1"></label>
+    <label>Z: <input id="rotZ" type="number" step="0.1"></label>
+
+    <h4>Depth</h4>
+    <label>Far: <input id="far" type="number" step="1"></label>
+    <label>Field of View: <input id="fov" type="number" step="1"></label>
+    <hr>
+
+    <h4>Project on:</h4>
+    <label><input type="checkbox" id="layerBuildings">Buildings</label>
+    <label><input type="checkbox" id="layerGround">Ground</label>
+    <hr>
+    <button onclick="toggleFirstPerson()">Toggle First Person</button>
+  </div>
+
+  <div class="info">
     ©️
     <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
     contributors
   </div>
-  <button onclick="toggleFirstPerson()">Toggle First Person</button>
 
-
-
-  <!-- <script
-    type="module"
-    src="/renderer.js"
-  ></script> -->
-  <script
-    type="module"
-    src="/src/main.js"
-  ></script>
+  <script type="module" src="/src/main.js"></script>
   <script>
-    function toggleFirstPerson() {
-      const renderer = document.querySelector('vantage-renderer')
-      const value = renderer.attributes['first-person']?.value
+    window.addEventListener('DOMContentLoaded', () => {
+      loadProjectionValues(document.getElementById('projectionSelector').value)
+    })
 
-      renderer.setAttribute('first-person', value === '' || value === 'true' ? 'false' : 'true')
+    document.querySelector('.controls').addEventListener('input', e => {
+      if (e.target.matches('input[type="number"]')) applyChanges()
+    })
+
+    document.querySelector('.controls').addEventListener('change', e => {
+      if (e.target.matches('select#projectionSelector')) {
+        loadProjectionValues(e.target.value)
+      } else if (e.target.matches('input[type="checkbox"]')) {
+        applyChanges()
+      }
+    })
+
+    function toggleFirstPerson() {
+      const r = document.querySelector('vantage-renderer')
+      const c = r.getAttribute('first-person')
+      r.setAttribute('first-person', c === 'true' ? 'false' : 'true')
+    }
+
+    function loadProjectionValues(id) {
+      const p = document.getElementById(id)
+     
+      
+      const pos = (p.getAttribute('position') || '0 0 0').split(' ')
+      document.getElementById('posX').value = pos[0]
+      document.getElementById('posY').value = pos[1]
+      document.getElementById('posZ').value = pos[2]
+     
+      const rot = (p.getAttribute('rotation') || '0 0 0').split(' ')
+      document.getElementById('rotX').value = rot[0]
+      document.getElementById('rotY').value = rot[1]
+      document.getElementById('rotZ').value = rot[2]
+      document.getElementById('fov').value = p.getAttribute('fov') || ''
+      document.getElementById('far').value = p.getAttribute('far') || ''
+      
+      const layers = p.getAttribute('layers') || ''
+      document.getElementById('layerBuildings').checked = layers.includes('Buildings')
+      document.getElementById('layerGround').checked = layers.includes('Ground')
+    }
+
+    function applyChanges() {
+      const id = document.getElementById('projectionSelector').value
+
+      const x = parseFloat(document.getElementById('posX').value) || 0
+      const y = parseFloat(document.getElementById('posY').value) || 0
+      const z = parseFloat(document.getElementById('posZ').value) || 0
+      p.setAttribute('position', x + ' ' + y + ' ' + z)
+      const rx = parseFloat(document.getElementById('rotX').value) || 0
+      const ry = parseFloat(document.getElementById('rotY').value) || 0
+      const rz = parseFloat(document.getElementById('rotZ').value) || 0
+      p.setAttribute('rotation', rx + ' ' + ry + ' ' + rz)
+      
+      const fov = parseFloat(document.getElementById('fov').value) || ''
+      fov !== '' ? p.setAttribute('fov', fov) : p.removeAttribute('fov')
+      
+      const far = parseFloat(document.getElementById('far').value) || ''
+      far !== '' ? p.setAttribute('far', far) : p.removeAttribute('far')
+      
+      const b = document.getElementById('layerBuildings').checked
+      const g = document.getElementById('layerGround').checked
+      
+      const newLayers = []
+      if (b) newLayers.push('Buildings')
+      if (g) newLayers.push('Ground')
+      newLayers.length ? p.setAttribute('layers', newLayers.join(' ')) : p.removeAttribute('layers')
     }
   </script>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      font-size: 10px;
+    }
+
+    .controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #F5F5F5;
+      box-shadow: inset 0 0 2px;
+      padding: 10px;
+      border-radius: 4px;
+    }
+
+    .info {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background-color: white;
+      padding: 2px;
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    label {
+      display: block;
+    }
+
+    select,
+    button,
+    input {
+      margin-top: 5px;
+    }
+  </style>
 </body>
-
-<style>
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-    margin: 0;
-  }
-
-  .map-info {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    background-color: white;
-    font-family: sans-serif;
-    padding: 2px;
-    font-size: 12px
-  }
-</style>
 
 </html>
