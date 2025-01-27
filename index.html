@@ -30,26 +30,30 @@
       </select>
     </div>
 
-    <h3>Camera Positioning</h3>
-    <h4>Position</h4>
-    <label>X: <input id="posX" type="number" step="1"></label>
-    <label>Y: <input id="posY" type="number" step="1"></label>
-    <label>Z: <input id="posZ" type="number" step="1"></label>
+    <div>
+      <h3>Camera Positioning</h3>
+      <h4>Position</h4>
+      <label>X: <input id="posX" type="number" step="1"></label>
+      <label>Y: <input id="posY" type="number" step="1"></label>
+      <label>Z: <input id="posZ" type="number" step="1"></label>
+    </div>
+    <div>
+      <h4>Rotation</h4>
+      <label>X: <input id="rotX" type="number" step="0.1"></label>
+      <label>Y: <input id="rotY" type="number" step="0.1"></label>
+      <label>Z: <input id="rotZ" type="number" step="0.1"></label>
+    </div>
+    <div>
+      <h4>Depth</h4>
+      <label>Far: <input id="far" type="number" step="1"></label>
+      <label>Field of View: <input id="fov" type="number" step="1"></label>
 
-    <h4>Rotation</h4>
-    <label>X: <input id="rotX" type="number" step="0.1"></label>
-    <label>Y: <input id="rotY" type="number" step="0.1"></label>
-    <label>Z: <input id="rotZ" type="number" step="0.1"></label>
-
-    <h4>Depth</h4>
-    <label>Far: <input id="far" type="number" step="1"></label>
-    <label>Field of View: <input id="fov" type="number" step="1"></label>
-    <hr>
-
-    <h4>Project on:</h4>
-    <label><input type="checkbox" id="layerBuildings">Buildings</label>
-    <label><input type="checkbox" id="layerGround">Ground</label>
-    <hr>
+    </div>
+    <div>
+      <h4>Project on:</h4>
+      <label><input type="checkbox" id="layerBuildings">Buildings</label>
+      <label><input type="checkbox" id="layerGround">Ground</label>
+    </div>
     <button onclick="toggleFirstPerson()">Toggle First Person</button>
   </div>
 
@@ -85,20 +89,20 @@
 
     function loadProjectionValues(id) {
       const p = document.getElementById(id)
-     
-      
+
+
       const pos = (p.getAttribute('position') || '0 0 0').split(' ')
       document.getElementById('posX').value = pos[0]
       document.getElementById('posY').value = pos[1]
       document.getElementById('posZ').value = pos[2]
-     
+
       const rot = (p.getAttribute('rotation') || '0 0 0').split(' ')
       document.getElementById('rotX').value = rot[0]
       document.getElementById('rotY').value = rot[1]
       document.getElementById('rotZ').value = rot[2]
       document.getElementById('fov').value = p.getAttribute('fov') || ''
       document.getElementById('far').value = p.getAttribute('far') || ''
-      
+
       const layers = p.getAttribute('layers') || ''
       document.getElementById('layerBuildings').checked = layers.includes('Buildings')
       document.getElementById('layerGround').checked = layers.includes('Ground')
@@ -116,16 +120,16 @@
       const ry = parseFloat(document.getElementById('rotY').value) || 0
       const rz = parseFloat(document.getElementById('rotZ').value) || 0
       p.setAttribute('rotation', rx + ' ' + ry + ' ' + rz)
-      
+
       const fov = parseFloat(document.getElementById('fov').value) || ''
       fov !== '' ? p.setAttribute('fov', fov) : p.removeAttribute('fov')
-      
+
       const far = parseFloat(document.getElementById('far').value) || ''
       far !== '' ? p.setAttribute('far', far) : p.removeAttribute('far')
-      
+
       const b = document.getElementById('layerBuildings').checked
       const g = document.getElementById('layerGround').checked
-      
+
       const newLayers = []
       if (b) newLayers.push('Buildings')
       if (g) newLayers.push('Ground')
@@ -139,16 +143,28 @@
       margin: 0;
       padding: 0;
       font-family: sans-serif;
-      font-size: 10px;
+      font-size: 11px;
+      text-rendering: optimizeLegibility;
+    }
+
+    h1,
+    h3,
+    h4 {
+      margin: 5px 0;
+      padding: 0;
+    }
+
+    div {
+      margin: 0 0 20px 0px
     }
 
     .controls {
       position: absolute;
       top: 10px;
-      left: 10px;
+      right: 10px;
       background: #F5F5F5;
       box-shadow: inset 0 0 2px;
-      padding: 10px;
+      padding: 5px;
       border-radius: 4px;
     }
 
@@ -162,14 +178,15 @@
       opacity: 0.7;
     }
 
-    label {
+    button,
+    select {
+      margin-top: 10px;
       display: block;
     }
 
-    select,
-    button,
-    input {
-      margin-top: 5px;
+    input[type=number] {
+      max-width: 40px;
+      display: inline;
     }
   </style>
 </body>
