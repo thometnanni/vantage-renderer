@@ -178,7 +178,7 @@ export default class Projection {
   set screen (screen) {
     this.#screen = screen === true
     if (this.plane) this.plane.visible = this.#screen
-    this.updatePlane()
+    this.update()
   }
 
   get screen () {
