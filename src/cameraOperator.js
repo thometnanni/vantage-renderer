@@ -12,7 +12,10 @@ export default class CameraOperator extends EventDispatcher {
   #controls
   #focusCamera
 
-  constructor (renderer, { mapCameraPosition = [250, 500, 0], domElement, firstPerson, controls }) {
+  constructor (
+    renderer,
+    { mapCameraPosition = [-200, 200, 100], domElement, firstPerson, controls }
+  ) {
     super()
     // this.renderer = renderer
     this.mapCamera.position.set(...mapCameraPosition)
