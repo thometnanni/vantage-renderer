@@ -1,24 +1,37 @@
 {
-  "name": "vantage",
+  "name": "vantage-renderer",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thometnanni/vantage-renderer"
+  },
+  "main": "./dist/vantage-renderer.umd.cjs",
+  "module": "./dist/vantage-renderer.js",
+  "exports": {
+    ".": {
+      "import": "./dist/vantage-renderer.js",
+      "require": "./dist/vantage-renderer.umd.cjs"
+    }
+  },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --config vite.config.site.js",
     "build": "vite build",
+    "build:site": "vite build --config vite.config.site.js",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@eslint/js": "^9.19.0",
+    "eslint": "^9.19.0",
+    "globals": "^15.14.0",
+    "prettier": "3.4.2",
     "vite": "^5.4.1"
   },
   "dependencies": {
-    "@turf/bbox-clip": "^7.1.0",
-    "@turf/bbox-polygon": "^7.1.0",
-    "@turf/center": "^7.1.0",
-    "@turf/helpers": "^7.1.0",
-    "@turf/intersect": "^7.1.0",
-    "@turf/rhumb-bearing": "^7.1.0",
-    "@turf/rhumb-distance": "^7.1.0",
     "three": "^0.172.0",
     "three-projected-material": "github:fidelthomet/three-projected-material"
   }
