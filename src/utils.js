@@ -73,9 +73,7 @@ function parseAttribute (name, value) {
     case 'rotation':
       return [...value.split(' ').map(v => +v), 'YXZ']
     case 'layers':
-      return [...value.matchAll(/'([^']+)'|"([^"]+)"|([^ ]+)/g)].map(
-        d => d[1] ?? d[2] ?? d[3]
-      )
+      return [...value.matchAll(/'([^']+)'|"([^"]+)"|([^ ]+)/g)].map(d => d[1] ?? d[2] ?? d[3])
     case 'fov':
     case 'far':
       return +value
@@ -111,11 +109,7 @@ async function setupScene (url) {
 
   const edges = new Group()
   edges.name = 'vantage:edges'
-  edges.add(
-    ...meshes.map(
-      mesh => new LineSegments(new EdgesGeometry(mesh.geometry), lineMaterial)
-    )
-  )
+  edges.add(...meshes.map(mesh => new LineSegments(new EdgesGeometry(mesh.geometry), lineMaterial)))
 
   base.add(...meshes, edges)
 
@@ -140,11 +134,4 @@ function setupLights () {
   return lights
 }
 
-export {
-  loadTexture,
-  loadScene,
-  unpackGroup,
-  parseAttribute,
-  setupScene,
-  setupLights
-}
+export { loadTexture, loadScene, unpackGroup, parseAttribute, setupScene, setupLights }

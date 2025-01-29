@@ -233,10 +233,7 @@ export default class Projection {
 
     this.plane.position.set(...position)
     const scale = this.camera.isOrthographicCamera
-      ? [
-          this.camera.right - this.camera.left,
-          this.camera.top - this.camera.bottom
-        ]
+      ? [this.camera.right - this.camera.left, this.camera.top - this.camera.bottom]
       : this.camera.getViewSize(this.camera.far, new Vector2())
 
     this.plane.scale.set(...scale, 1)
@@ -287,11 +284,7 @@ export default class Projection {
         depthMap: this.renderTarget.depthTexture
       })
 
-      this.#layers[layer].geometry.addGroup(
-        0,
-        Infinity,
-        this.#layers[layer].geometry.groups.length
-      )
+      this.#layers[layer].geometry.addGroup(0, Infinity, this.#layers[layer].geometry.groups.length)
       this.#layers[layer].material.push(this.material[layer])
     }
 

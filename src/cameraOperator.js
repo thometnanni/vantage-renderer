@@ -12,10 +12,7 @@ export default class CameraOperator extends EventDispatcher {
   #controls
   #focusCamera
 
-  constructor (
-    renderer,
-    { mapCameraPosition = [250, 500, 0], domElement, firstPerson, controls }
-  ) {
+  constructor (renderer, { mapCameraPosition = [250, 500, 0], domElement, firstPerson, controls }) {
     super()
     // this.renderer = renderer
     this.mapCamera.position.set(...mapCameraPosition)
@@ -184,9 +181,7 @@ export default class CameraOperator extends EventDispatcher {
           this.projection.camera.rotateZ(-0.02)
           break
       }
-      this.projection.camera.position.set(
-        ...this.fpCamera.getWorldPosition(new Vector3())
-      )
+      this.projection.camera.position.set(...this.fpCamera.getWorldPosition(new Vector3()))
       this.projection.update()
     }
   }

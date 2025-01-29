@@ -36,33 +36,18 @@ class PointerLockControls extends Controls {
   }
 
   connect () {
-    this.domElement.ownerDocument.addEventListener(
-      'mousemove',
-      this._onMouseMove
-    )
-    this.domElement.ownerDocument.addEventListener(
-      'pointerlockchange',
-      this._onPointerlockChange
-    )
-    this.domElement.ownerDocument.addEventListener(
-      'pointerlockerror',
-      this._onPointerlockError
-    )
+    this.domElement.ownerDocument.addEventListener('mousemove', this._onMouseMove)
+    this.domElement.ownerDocument.addEventListener('pointerlockchange', this._onPointerlockChange)
+    this.domElement.ownerDocument.addEventListener('pointerlockerror', this._onPointerlockError)
   }
 
   disconnect () {
-    this.domElement.ownerDocument.removeEventListener(
-      'mousemove',
-      this._onMouseMove
-    )
+    this.domElement.ownerDocument.removeEventListener('mousemove', this._onMouseMove)
     this.domElement.ownerDocument.removeEventListener(
       'pointerlockchange',
       this._onPointerlockChange
     )
-    this.domElement.ownerDocument.removeEventListener(
-      'pointerlockerror',
-      this._onPointerlockError
-    )
+    this.domElement.ownerDocument.removeEventListener('pointerlockerror', this._onPointerlockError)
   }
 
   dispose () {
@@ -127,10 +112,8 @@ class PointerLockControls extends Controls {
 function onMouseMove (event) {
   if (this.enabled === false || this.isLocked === false) return
 
-  const movementX =
-    event.movementX || event.mozMovementX || event.webkitMovementX || 0
-  const movementY =
-    event.movementY || event.mozMovementY || event.webkitMovementY || 0
+  const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0
+  const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0
 
   const camera = this.object
   _euler.setFromQuaternion(camera.quaternion)
@@ -138,10 +121,7 @@ function onMouseMove (event) {
   _euler.y -= movementX * 0.002 * this.pointerSpeed
   _euler.x -= movementY * 0.002 * this.pointerSpeed
 
-  _euler.x = Math.max(
-    _PI_2 - this.maxPolarAngle,
-    Math.min(_PI_2 - this.minPolarAngle, _euler.x)
-  )
+  _euler.x = Math.max(_PI_2 - this.maxPolarAngle, Math.min(_PI_2 - this.minPolarAngle, _euler.x))
 
   camera.quaternion.setFromEuler(_euler)
   if (this.attachedCamera != null) {
@@ -150,10 +130,7 @@ function onMouseMove (event) {
     _euler.y -= movementX * 0.002 * this.pointerSpeed
     _euler.x -= movementY * 0.002 * this.pointerSpeed
 
-    _euler.x = Math.max(
-      _PI_2 - this.maxPolarAngle,
-      Math.min(_PI_2 - this.minPolarAngle, _euler.x)
-    )
+    _euler.x = Math.max(_PI_2 - this.maxPolarAngle, Math.min(_PI_2 - this.minPolarAngle, _euler.x))
 
     this.attachedCamera.quaternion.setFromEuler(_euler)
   }
