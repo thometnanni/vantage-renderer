@@ -1,4 +1,4 @@
-import { Scene, WebGLRenderer, Vector3, Quaternion } from 'three'
+import { Scene, WebGLRenderer, Vector3 } from 'three'
 import CameraOperator from './cameraOperator'
 import { loadTexture, parseAttribute, setupScene, setupLights } from './utils'
 import Projection from './Projection'
@@ -23,18 +23,18 @@ class VantageRenderer extends HTMLElement {
   async attributeChangedCallback (name, _oldValue, newValue) {
     const value = parseAttribute(name, newValue)
     switch (name) {
-      case 'scene':
+      case 'scene': {
         const { base, bounds } = await setupScene(value)
         this.scene.getObjectByName('vantage:base')?.removeFromParent()
         this.scene.add(base)
         this.bounds = bounds
         Object.values(this.projections).forEach(projection => {
-          if (projection.bounds == null)
-            projection.bounds = { bounds, auto: true }
+          if (projection.bounds == null) projection.bounds = { bounds, auto: true }
           projection.createLayers()
           projection.update()
         })
         break
+      }
       case 'first-person':
         if (!this.cameraOperator) return
         this.cameraOperator.firstPerson = value
@@ -62,14 +62,10 @@ class VantageRenderer extends HTMLElement {
     this.addEventListener('vantage:add-projection', e => {
       this.addProjection(e.detail)
     })
-    this.addEventListener('vantage:update-projection', e =>
-      this.updateProjection(e.detail)
-    )
-    this.addEventListener('vantage:remove-projection', e =>
-      this.removeProjection(e.detail)
-    )
+    this.addEventListener('vantage:update-projection', e => this.updateProjection(e.detail))
+    this.addEventListener('vantage:remove-projection', e => this.removeProjection(e.detail))
 
-    this.addEventListener('mousedown', e => {
+    this.addEventListener('mousedown', () => {
       this.mousePressed = true
       this.lastRotation = null
       this.addEventListener('mouseup', () => (this.mousePressed = false), {
@@ -78,29 +74,21 @@ class VantageRenderer extends HTMLElement {
     })
 
     this.cameraOperator = new CameraOperator(this.renderer, {
-      firstPerson: parseAttribute(
-        'first-person',
-        this.attributes['first-person']?.value
-      ),
+      firstPerson: parseAttribute('first-person', this.attributes['first-person']?.value),
       controls: parseAttribute('controls', this.attributes['controls']?.value),
       domElement: this
     })
 
-    this.cameraOperator.addEventListener('vantage:unlock-first-person', e => {
+    this.cameraOperator.addEventListener('vantage:unlock-first-person', () => {
       this.setAttribute('first-person', 'false')
     })
 
-    this.cameraOperator.addEventListener(
-      'vantage:update-focus-camera',
-      ({ value }) => {
-        if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
-        const target = Object.values(this.projections).find(
-          ({ focus }) => focus
-        )
-        if (target == null) return
-        target.element.setAttribute('rotation', value.join(' '))
-      }
-    )
+    this.cameraOperator.addEventListener('vantage:update-focus-camera', ({ value }) => {
+      if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
+      const target = Object.values(this.projections).find(({ focus }) => focus)
+      if (target == null) return
+      target.element.setAttribute('rotation', value.join(' '))
+    })
 
     this.scene.add(setupLights())
 
@@ -158,14 +146,15 @@ class VantageRenderer extends HTMLElement {
     this.projections[id] = projection
   }
 
-  async updateProjection ({ id, property, value, oldValue }) {
+  async updateProjection ({ id, property, value }) {
     const projection = this.projections[id]
     if (projection == null) return
     switch (property) {
-      case 'src':
+      case 'src': {
         const texture = await loadTexture(value)
         projection.texture = texture
         break
+      }
       case 'bounds':
         projection.bounds = value
           ? { bounds: value, auto: false }
@@ -238,10 +227,7 @@ class VantageProjection extends HTMLElement {
 
   create () {
     const attributes = Object.fromEntries(
-      [...this.attributes].map(({ name, value }) => [
-        name,
-        parseAttribute(name, value)
-      ])
+      [...this.attributes].map(({ name, value }) => [name, parseAttribute(name, value)])
     )
 
     const event = new CustomEvent('vantage:add-projection', {

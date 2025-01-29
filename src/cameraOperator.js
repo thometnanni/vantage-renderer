@@ -42,7 +42,7 @@ export default class CameraOperator extends EventDispatcher {
       this.dispatchEvent({ type: 'vantage:unlock-first-person' })
     })
 
-    this.fpControls.addEventListener('change', (e, a, b) => {
+    this.fpControls.addEventListener('change', () => {
       // if (this.fpControls.attachedCamera != null) this.projection.update()
     })
 
@@ -132,7 +132,7 @@ export default class CameraOperator extends EventDispatcher {
     this.projection = null
   }
 
-  keydown = ({ code, key, shiftKey }) => {
+  keydown = ({ code }) => {
     if (!this.controls) return
     // if (this.mapControls.enabled) return;
 
@@ -191,7 +191,7 @@ export default class CameraOperator extends EventDispatcher {
     }
   }
 
-  mousedown = e => {
+  mousedown = () => {
     if (!this.fpControls.enabled || this.#focusCamera == null) return
     this.fpControls.attachCamera(this.#focusCamera)
     window.addEventListener(

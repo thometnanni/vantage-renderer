@@ -299,7 +299,7 @@ export default class Projection {
   }
 
   updateLayers = () => {
-    Object.entries(this.#layers).forEach(([layerName, layer]) => {
+    Object.entries(this.#layers).forEach(([layerName]) => {
       if (layerName === 'vantage:screen') return
       this.material[layerName].visible =
         this.#layerNames == null || this.#layerNames.includes(layerName)
