@@ -1,7 +1,7 @@
 import { Scene, WebGLRenderer, Vector3, Quaternion } from 'three'
-import CameraOperator from '../cameraOperator'
+import CameraOperator from './cameraOperator'
 import { loadTexture, parseAttribute, setupScene, setupLights } from './utils'
-import Projection from '../Projection'
+import Projection from './Projection'
 
 class VantageRenderer extends HTMLElement {
   root
