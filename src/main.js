@@ -1,4 +1,4 @@
-import { Scene, WebGLRenderer, DirectionalLight, AmbientLight } from 'three'
+import { Scene, WebGLRenderer, Vector3, Quaternion } from 'three'
 import CameraOperator from '../cameraOperator'
 import { loadTexture, parseAttribute, setupScene, setupLights } from './utils'
 import Projection from '../Projection'
@@ -11,12 +11,15 @@ class VantageRenderer extends HTMLElement {
   meshes
   bounds
   projections = {}
+  controls = false
+  mousePressed = true
+  lastRotation = null
 
   constructor () {
     super()
   }
 
-  static observedAttributes = ['scene', 'first-person']
+  static observedAttributes = ['scene', 'first-person', 'controls']
   async attributeChangedCallback (name, _oldValue, newValue) {
     const value = parseAttribute(name, newValue)
     switch (name) {
@@ -35,6 +38,14 @@ class VantageRenderer extends HTMLElement {
       case 'first-person':
         if (!this.cameraOperator) return
         this.cameraOperator.firstPerson = value
+        this.cameraOperator.camera = Object.values(this.projections).find(
+          ({ focus }) => focus
+        )?.camera
+        break
+      case 'controls':
+        this.controls = value
+        if (!this.cameraOperator) return
+        this.cameraOperator.controls = value
         break
       default:
         break
@@ -48,9 +59,9 @@ class VantageRenderer extends HTMLElement {
 
     this.attachShadow({ mode: 'open' }).appendChild(this.renderer.domElement)
 
-    this.addEventListener('vantage:add-projection', e =>
+    this.addEventListener('vantage:add-projection', e => {
       this.addProjection(e.detail)
-    )
+    })
     this.addEventListener('vantage:update-projection', e =>
       this.updateProjection(e.detail)
     )
@@ -58,13 +69,38 @@ class VantageRenderer extends HTMLElement {
       this.removeProjection(e.detail)
     )
 
+    this.addEventListener('mousedown', e => {
+      this.mousePressed = true
+      this.lastRotation = null
+      this.addEventListener('mouseup', () => (this.mousePressed = false), {
+        once: true
+      })
+    })
+
     this.cameraOperator = new CameraOperator(this.renderer, {
       firstPerson: parseAttribute(
         'first-person',
         this.attributes['first-person']?.value
       ),
+      controls: parseAttribute('controls', this.attributes['controls']?.value),
       domElement: this
     })
+
+    this.cameraOperator.addEventListener('vantage:unlock-first-person', e => {
+      this.setAttribute('first-person', 'false')
+    })
+
+    this.cameraOperator.addEventListener(
+      'vantage:update-focus-camera',
+      ({ value }) => {
+        if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
+        const target = Object.values(this.projections).find(
+          ({ focus }) => focus
+        )
+        if (target == null) return
+        target.element.setAttribute('rotation', value.join(' '))
+      }
+    )
 
     this.scene.add(setupLights())
 
@@ -72,10 +108,21 @@ class VantageRenderer extends HTMLElement {
   }
 
   update = () => {
+    this.updateFocusCamera()
     this.renderer.render(this.scene, this.cameraOperator.camera)
   }
 
-  async addProjection ({ id, attributes }) {
+  updateFocusCamera = () => {
+    if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
+    const target = Object.values(this.projections).find(({ focus }) => focus)
+    if (target == null) return
+
+    const pos = this.cameraOperator.camera.getWorldPosition(new Vector3())
+
+    target.element.setAttribute('position', [...pos].join(' '))
+  }
+
+  async addProjection ({ id, attributes, element }) {
     const texture = await loadTexture(attributes.src)
 
     const width = texture.source.data.videoWidth ?? texture.source.data.width
@@ -97,11 +144,16 @@ class VantageRenderer extends HTMLElement {
       orthographic: attributes.orthographic,
       screen: attributes.screen,
       focus: attributes.focus,
-      passThrough: attributes['pass-through']
+      passThrough: attributes['pass-through'],
+      element
     })
 
     projection.update()
     this.scene.add(projection.helper)
+
+    if (attributes.focus) {
+      this.cameraOperator.camera = projection.camera
+    }
 
     this.projections[id] = projection
   }
@@ -119,10 +171,18 @@ class VantageRenderer extends HTMLElement {
           ? { bounds: value, auto: false }
           : { bounds: this.bounds, auto: true }
         break
+      case 'focus':
+        this.cameraOperator.camera = projection.camera
+        projection[property] = value
+        break
       default:
         projection[property] = value
       // projection.update()
     }
+    // if (projection.focus) {
+    //   // console.log('set focus')
+    //   this.cameraOperator.camera = projection.camera
+    // }
   }
 
   removeProjection ({ id }) {
@@ -188,6 +248,7 @@ class VantageProjection extends HTMLElement {
       bubbles: true,
       detail: {
         id: this.projectionId,
+        element: this,
         attributes
       }
     })

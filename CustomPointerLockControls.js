@@ -162,11 +162,6 @@ function onMouseMove (event) {
 }
 
 function onPointerlockChange () {
-  console.log(
-    this.domElement.ownerDocument.pointerLockElement,
-    this.domElement,
-    this.domElement.ownerDocument
-  )
   if (this.domElement.ownerDocument.pointerLockElement === this.domElement) {
     this.dispatchEvent(_lockEvent)
 

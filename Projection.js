@@ -53,7 +53,8 @@ export default class Projection {
     screen,
     attributes,
     id,
-    focus
+    focus,
+    element
   } = {}) {
     this.id = id
     this.renderer = renderer
@@ -61,6 +62,7 @@ export default class Projection {
 
     this.#bounds = bounds
 
+    this.element = element
     this.attributes = attributes
 
     // this.updateLayerMeshes()

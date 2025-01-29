@@ -85,6 +85,10 @@ function parseAttribute (name, value) {
     case 'pass-through':
     case 'first-person':
       return value === '' || value === 'true'
+    case 'controls':
+      if (value === '' || value === 'true' || value === 'move') return 'move'
+      if (value === 'edit') return 'edit'
+      return false
     default:
       return value
   }

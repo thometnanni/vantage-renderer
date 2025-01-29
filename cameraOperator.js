@@ -1,19 +1,22 @@
-import { PerspectiveCamera, Vector3, Quaternion } from 'three'
+import { PerspectiveCamera, Vector3, Quaternion, EventDispatcher } from 'three'
 
 import { MapControls } from 'three/addons/controls/MapControls'
 import { PointerLockControls } from './CustomPointerLockControls'
 
-export default class CameraOperator {
+export default class CameraOperator extends EventDispatcher {
   mapCamera = new PerspectiveCamera(60, innerWidth / innerHeight, 1, 10000)
   fpCamera = new PerspectiveCamera(60, innerWidth / innerHeight, 1, 10000)
   mapControls
   projection
   #firstPerson
+  #controls
+  #focusCamera
 
   constructor (
     renderer,
-    { mapCameraPosition = [250, 500, 0], firstPerson, domElement }
+    { mapCameraPosition = [250, 500, 0], domElement, firstPerson, controls }
   ) {
+    super()
     // this.renderer = renderer
     this.mapCamera.position.set(...mapCameraPosition)
     // if (mapCameraRotation) {
@@ -35,27 +38,40 @@ export default class CameraOperator {
     )
 
     this.fpControls.addEventListener('unlock', () => {
-      console.log('unlock')
       this.map()
+      this.dispatchEvent({ type: 'vantage:unlock-first-person' })
     })
 
     this.fpControls.addEventListener('change', (e, a, b) => {
-      if (this.fpControls.attachedCamera != null) this.projection.update()
+      // if (this.fpControls.attachedCamera != null) this.projection.update()
     })
 
     this.fpControls.enabled = false
 
     this.firstPerson = firstPerson
+    this.controls = controls
     document.addEventListener('keydown', this.keydown)
     document.addEventListener('mousedown', this.mousedown)
   }
 
+  set camera (camera) {
+    this.#focusCamera = camera
+    if (!this.#firstPerson || camera == null) return
+
+    const pos = camera.getWorldPosition(new Vector3())
+    const quat = camera.getWorldQuaternion(new Quaternion())
+
+    this.fpCamera.position.set(...pos)
+    this.fpCamera.setRotationFromQuaternion(quat)
+    this.fpCamera.updateProjectionMatrix()
+  }
+
   get camera () {
-    return this.mapControls.enabled ? this.mapCamera : this.fpCamera
+    return !this.#firstPerson ? this.mapCamera : this.fpCamera
   }
 
   set firstPerson (firstPerson) {
-    console.log('first persopn', firstPerson)
+    this.#firstPerson = firstPerson
     if (firstPerson) this.fp()
     else this.map()
   }
@@ -64,9 +80,21 @@ export default class CameraOperator {
     return this.#firstPerson
   }
 
+  set controls (controls) {
+    if (controls) {
+      if (this.firstPerson) this.fp()
+      else this.map()
+    }
+    // else this.map()
+    this.#controls = controls
+  }
+
+  get controls () {
+    return this.#controls
+  }
+
   map () {
-    console.log('map', this.mapControls.enabled)
-    if (this.mapControls.enabled) return
+    if (!this.controls || this.mapControls.enabled) return
 
     this.mapControls.enabled = true
     this.fpControls.enabled = false
@@ -75,18 +103,11 @@ export default class CameraOperator {
   }
 
   fp () {
-    console.log('fp', this.fpControls.enabled)
-    if (this.fpControls.enabled) return
+    if (!this.controls || this.fpControls.enabled) return
 
     this.mapControls.enabled = false
     this.fpControls.enabled = true
     this.fpControls.lock()
-  }
-
-  toggle = () => {
-    console.log('toggle')
-    if (this.mapControls.enabled) this.fp()
-    else this.map()
   }
 
   attachProjection = (projection, reverse) => {
@@ -112,10 +133,7 @@ export default class CameraOperator {
   }
 
   keydown = ({ code, key, shiftKey }) => {
-    // if (code === "Enter") {
-    //   this.toggle();
-    // }
-
+    if (!this.controls) return
     // if (this.mapControls.enabled) return;
 
     switch (code) {
@@ -174,10 +192,20 @@ export default class CameraOperator {
   }
 
   mousedown = e => {
-    if (!this.fpControls.enabled || this.projection == null) return
-    this.fpControls.attachCamera(this.projection.camera)
-    window.addEventListener('mouseup', () => this.fpControls.detachCamera(), {
-      once: true
-    })
+    if (!this.fpControls.enabled || this.#focusCamera == null) return
+    this.fpControls.attachCamera(this.#focusCamera)
+    window.addEventListener(
+      'mouseup',
+      () => {
+        this.fpControls.detachCamera()
+        this.dispatchEvent({
+          type: 'vantage:update-focus-camera',
+          value: [...this.#focusCamera.rotation].slice(0, -1)
+        })
+      },
+      {
+        once: true
+      }
+    )
   }
 }
