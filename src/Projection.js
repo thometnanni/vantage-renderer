@@ -12,7 +12,8 @@ import {
   PlaneGeometry,
   Vector2,
   OrthographicCamera,
-  DoubleSide
+  DoubleSide,
+  MeshDepthMaterial
 } from 'three'
 
 import ProjectedMaterial from 'three-projected-material'
@@ -224,7 +225,14 @@ export default class Projection {
 
     this.scene.getObjectByName('vantage:screens').visible = false
 
-    this.scene.overrideMaterial = new MeshBasicMaterial()
+    const depthMaterial = new MeshDepthMaterial({
+      polygonOffset: true,
+      polygonOffsetFactor: 1.0,
+      polygonOffsetUnits: 1.0
+    });
+
+    // this.scene.overrideMaterial = new MeshBasicMaterial()
+    this.scene.overrideMaterial = depthMaterial
     this.renderer.setRenderTarget(this.renderTarget)
     this.renderer.render(this.scene, this.camera)
     this.renderer.setRenderTarget(null)
