@@ -90,7 +90,7 @@ export default class Projection {
     this.renderTarget.depthTexture = new DepthTexture()
     this.renderTarget.depthTexture.type = FloatType
 
-    this.createDepthMap()
+    // this.createDepthMap()
 
     this.texture = texture
     this.textureSource = textureSource
@@ -219,6 +219,11 @@ export default class Projection {
     const helperVisible = this.helper.visible
     this.helper.visible = false
 
+    const planeCopy = this.plane.clone()
+    this.scene.add(planeCopy)
+
+    this.scene.getObjectByName('vantage:screens').visible = false
+
     this.scene.overrideMaterial = new MeshBasicMaterial()
     this.renderer.setRenderTarget(this.renderTarget)
     this.renderer.render(this.scene, this.camera)
@@ -226,6 +231,9 @@ export default class Projection {
     this.scene.overrideMaterial = null
 
     this.helper.visible = helperVisible
+    this.scene.getObjectByName('vantage:screens').visible = true
+
+    this.scene.remove(planeCopy)
   }
 
   // updateTexture = texture => {
@@ -258,7 +266,7 @@ export default class Projection {
   }
 
   update = () => {
-    if (!this.ready) return
+    if (!this.ready || this.scene.getObjectByName('vantage:base') == null) return
     this.updatePlane()
     this.createDepthMap()
     this.helper.update()
@@ -287,7 +295,7 @@ export default class Projection {
           side: DoubleSide
         })
       )
-      this.scene.add(this.plane)
+      this.scene.getObjectByName('vantage:screens').add(this.plane)
     }
 
     this.#layers['vantage:screen'] = this.plane

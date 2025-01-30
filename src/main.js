@@ -1,4 +1,4 @@
-import { Scene, WebGLRenderer, Vector3 } from 'three'
+import { Scene, WebGLRenderer, Vector3, Group } from 'three'
 import CameraOperator from './cameraOperator'
 import { loadTexture, parseAttribute, setupScene, setupLights } from './utils'
 import Projection from './Projection'
@@ -90,7 +90,9 @@ class VantageRenderer extends HTMLElement {
       target.element.setAttribute('rotation', value.join(' '))
     })
 
-    this.scene.add(setupLights())
+    const screens = new Group()
+    screens.name = 'vantage:screens'
+    this.scene.add(setupLights(), screens)
   }
 
   update = () => {
