@@ -35,6 +35,7 @@ export default class Projection {
   id
   ready = false
   #focus
+  #index
 
   constructor ({
     renderer,
@@ -54,7 +55,8 @@ export default class Projection {
     attributes,
     id,
     focus,
-    element
+    element,
+    index
   } = {}) {
     this.id = id
     this.renderer = renderer
@@ -66,6 +68,8 @@ export default class Projection {
     this.attributes = attributes
 
     // this.updateLayerMeshes()
+
+    this.index = index
 
     this.camera = orthographic
       ? new OrthographicCamera(...(bounds ?? [100, -100, -100, 100]), 0, far)
@@ -100,6 +104,17 @@ export default class Projection {
     this.focus = focus
 
     this.ready = true
+  }
+
+  set index (index) {
+    this.#index = index
+    for (const layer in this.material) {
+      this.#layers[layer].material[this.index] = this.material[layer]
+    }
+  }
+
+  get index () {
+    return this.#index
   }
 
   set layers (layers) {
@@ -285,7 +300,7 @@ export default class Projection {
       })
 
       this.#layers[layer].geometry.addGroup(0, Infinity, this.#layers[layer].geometry.groups.length)
-      this.#layers[layer].material.push(this.material[layer])
+      this.#layers[layer].material[this.index] = this.material[layer]
     }
 
     this.updateLayers()

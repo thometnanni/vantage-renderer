@@ -91,8 +91,6 @@ class VantageRenderer extends HTMLElement {
     })
 
     this.scene.add(setupLights())
-
-    console.log('----   READY   ----')
   }
 
   update = () => {
@@ -116,8 +114,14 @@ class VantageRenderer extends HTMLElement {
     const width = texture.source.data.videoWidth ?? texture.source.data.width
     const height = texture.source.data.videoHeight ?? texture.source.data.height
 
+    const index = Array.prototype.indexOf.call(this.children, element)
+    Object.values(this.projections).forEach(projection => {
+      if (projection.index >= index) projection.index++
+    })
+
     const projection = new Projection({
       id,
+      index,
       attributes,
       renderer: this.renderer,
       scene: this.scene,
@@ -175,8 +179,14 @@ class VantageRenderer extends HTMLElement {
   }
 
   removeProjection ({ id }) {
+    const index = this.projections[id].index
+
     this.projections[id].destroy()
     delete this.projections[id]
+
+    Object.values(this.projections).forEach(projection => {
+      if (projection.index > index) projection.index--
+    })
   }
 }
 
