@@ -108,9 +108,10 @@ export default class Projection {
 
   set index (index) {
     this.#index = index
-    for (const layer in this.material) {
+    Object.keys(this.material).forEach(layer => {
+      if (layer === 'vantage-renderer') return
       this.#layers[layer].material[this.index] = this.material[layer]
-    }
+    })
   }
 
   get index () {
@@ -300,7 +301,11 @@ export default class Projection {
       })
 
       this.#layers[layer].geometry.addGroup(0, Infinity, this.#layers[layer].geometry.groups.length)
-      this.#layers[layer].material[this.index] = this.material[layer]
+      if (layer === 'vantage:screen') {
+        this.#layers[layer].material.push(this.material[layer])
+      } else {
+        this.#layers[layer].material[this.index] = this.material[layer]
+      }
     }
 
     this.updateLayers()
