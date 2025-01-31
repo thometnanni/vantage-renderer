@@ -15,12 +15,12 @@ class VantageRenderer extends HTMLElement {
   mousePressed = true
   lastRotation = null
 
-  constructor () {
+  constructor() {
     super()
   }
 
   static observedAttributes = ['scene', 'first-person', 'controls']
-  async attributeChangedCallback (name, _oldValue, newValue) {
+  async attributeChangedCallback(name, _oldValue, newValue) {
     const value = parseAttribute(name, newValue)
     switch (name) {
       case 'scene': {
@@ -28,7 +28,7 @@ class VantageRenderer extends HTMLElement {
         this.scene.getObjectByName('vantage:base')?.removeFromParent()
         this.scene.add(base)
         this.bounds = bounds
-        Object.values(this.projections).forEach(projection => {
+        Object.values(this.projections).forEach((projection) => {
           if (projection.bounds == null) projection.bounds = { bounds, auto: true }
           projection.createLayers()
           projection.update()
@@ -52,25 +52,30 @@ class VantageRenderer extends HTMLElement {
     }
   }
 
-  async connectedCallback () {
+  async connectedCallback() {
     this.renderer.setPixelRatio(window.devicePixelRatio)
-    this.renderer.setSize(window.innerWidth, window.innerHeight)
+
+    const shadow = this.attachShadow({ mode: 'open' })
+    this.renderer.domElement.style = 'display: block; width: 100%; height: 100%;'
+    shadow.appendChild(this.renderer.domElement)
+
+    this.resizeCanvas()
     this.renderer.setAnimationLoop(this.update)
 
-    this.attachShadow({ mode: 'open' }).appendChild(this.renderer.domElement)
+    this.resizeObserver = new ResizeObserver(() => this.resizeCanvas())
 
-    this.addEventListener('vantage:add-projection', e => {
-      this.addProjection(e.detail)
-    })
-    this.addEventListener('vantage:update-projection', e => this.updateProjection(e.detail))
-    this.addEventListener('vantage:remove-projection', e => this.removeProjection(e.detail))
+    if (this.parentElement) {
+      this.resizeObserver.observe(this.parentElement)
+    }
+
+    this.addEventListener('vantage:add-projection', (e) => this.addProjection(e.detail))
+    this.addEventListener('vantage:update-projection', (e) => this.updateProjection(e.detail))
+    this.addEventListener('vantage:remove-projection', (e) => this.removeProjection(e.detail))
 
     this.addEventListener('mousedown', () => {
       this.mousePressed = true
       this.lastRotation = null
-      this.addEventListener('mouseup', () => (this.mousePressed = false), {
-        once: true
-      })
+      this.addEventListener('mouseup', () => (this.mousePressed = false), { once: true })
     })
 
     this.cameraOperator = new CameraOperator(this.renderer, {
@@ -95,6 +100,24 @@ class VantageRenderer extends HTMLElement {
     this.scene.add(setupLights(), screens)
   }
 
+  resizeCanvas() {
+    if (!this.parentElement) return
+    const { width, height } = this.parentElement.getBoundingClientRect()
+
+    if (width > 0 && height > 0) {
+      this.renderer.setSize(width, height, false)
+
+      if (this.cameraOperator?.camera?.isPerspectiveCamera) {
+        this.cameraOperator.camera.aspect = width / height
+        this.cameraOperator.camera.updateProjectionMatrix()
+      }
+
+      if (this.cameraOperator?.camera) {
+        this.renderer.render(this.scene, this.cameraOperator.camera)
+      }
+    }
+  }
+
   update = () => {
     this.updateFocusCamera()
     this.renderer.render(this.scene, this.cameraOperator.camera)
@@ -110,14 +133,14 @@ class VantageRenderer extends HTMLElement {
     target.element.setAttribute('position', [...pos].join(' '))
   }
 
-  async addProjection ({ id, attributes, element }) {
+  async addProjection({ id, attributes, element }) {
     const texture = await loadTexture(attributes.src)
 
     const width = texture.source.data.videoWidth ?? texture.source.data.width
     const height = texture.source.data.videoHeight ?? texture.source.data.height
 
     const index = Array.prototype.indexOf.call(this.children, element)
-    Object.values(this.projections).forEach(projection => {
+    Object.values(this.projections).forEach((projection) => {
       if (projection.index >= index) projection.index++
     })
 
@@ -152,7 +175,7 @@ class VantageRenderer extends HTMLElement {
     this.projections[id] = projection
   }
 
-  async updateProjection ({ id, property, value }) {
+  async updateProjection({ id, property, value }) {
     const projection = this.projections[id]
     if (projection == null) return
     switch (property) {
@@ -180,20 +203,20 @@ class VantageRenderer extends HTMLElement {
     // }
   }
 
-  removeProjection ({ id }) {
+  removeProjection({ id }) {
     const index = this.projections[id].index
 
     this.projections[id].destroy()
     delete this.projections[id]
 
-    Object.values(this.projections).forEach(projection => {
+    Object.values(this.projections).forEach((projection) => {
       if (projection.index > index) projection.index--
     })
   }
 }
 
 class VantageProjection extends HTMLElement {
-  constructor () {
+  constructor() {
     super()
     this.root = null
     this.projectionId = null
@@ -211,7 +234,7 @@ class VantageProjection extends HTMLElement {
     'focus',
     'pass-through'
   ]
-  async attributeChangedCallback (name, oldValue, value) {
+  async attributeChangedCallback(name, oldValue, value) {
     if (this.projectionId == null) return
     if (name === 'orthographic') {
       this.destroy()
@@ -231,13 +254,13 @@ class VantageProjection extends HTMLElement {
     )
   }
 
-  async connectedCallback () {
+  async connectedCallback() {
     this.projectionId = crypto.randomUUID().split('-')[0]
     this.vantageRenderer = this.parentElement
     this.create()
   }
 
-  create () {
+  create() {
     const attributes = Object.fromEntries(
       [...this.attributes].map(({ name, value }) => [name, parseAttribute(name, value)])
     )
@@ -254,11 +277,11 @@ class VantageProjection extends HTMLElement {
     this.dispatchEvent(event)
   }
 
-  disconnectedCallback () {
+  disconnectedCallback() {
     this.destroy()
   }
 
-  destroy () {
+  destroy() {
     const event = new CustomEvent('vantage:remove-projection', {
       bubbles: true,
       detail: {
