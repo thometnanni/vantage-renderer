@@ -99,7 +99,7 @@ async function setupScene (url) {
   base.name = 'vantage:base'
 
   const solidMaterial = new MeshPhongMaterial({ color: 0xeeeeee })
-  const lineMaterial = new LineBasicMaterial({ color: 0xaaaaaa })
+  const lineMaterial = new LineBasicMaterial({ color: 0x000000 })
 
   meshes.forEach(mesh => {
     mesh.geometry.clearGroups()
