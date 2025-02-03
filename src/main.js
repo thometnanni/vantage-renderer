@@ -161,6 +161,7 @@ class VantageRenderer extends HTMLElement {
       orthographic: attributes.orthographic,
       screen: attributes.screen,
       focus: attributes.focus,
+      opacity: attributes.opacity,
       passThrough: attributes['pass-through'],
       element
     })
@@ -232,6 +233,7 @@ class VantageProjection extends HTMLElement {
     'layers',
     'bounds',
     'focus',
+    'opacity',
     'pass-through'
   ]
   async attributeChangedCallback(name, oldValue, value) {

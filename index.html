@@ -36,6 +36,7 @@
           screen="true"
           layers="Buildings Ground"
           focus
+          opacity=".6"
         ></vantage-projection>
 
         <vantage-projection
@@ -122,6 +123,11 @@
         <label><input type="checkbox" id="layerGround" />Ground</label>
         <label><input type="checkbox" id="layerPlane" />Plane</label>
       </div>
+      <div>
+        <label
+          >Projection opacity: <input id="opacity" type="number" min="0" max="1" step="0.1"
+        /></label>
+      </div>
       <button onclick="toggleFirstPerson()">Toggle First Person</button>
     </div>
     <div class="info">
@@ -161,6 +167,7 @@
 
         document.getElementById('fov').value = projection.getAttribute('fov') || ''
         document.getElementById('far').value = projection.getAttribute('far') || ''
+        document.getElementById('opacity').value = projection.getAttribute('opacity') || ''
 
         const layers = projection.getAttribute('layers') || ''
         document.getElementById('layerBuildings').checked = layers.includes('Buildings')
@@ -188,6 +195,11 @@
         const far = parseFloat(document.getElementById('far').value) || ''
         far !== '' ? projection.setAttribute('far', far) : projection.removeAttribute('far')
 
+        const opacity = parseFloat(document.getElementById('opacity').value) || ''
+        opacity !== ''
+          ? projection.setAttribute('opacity', opacity)
+          : projection.removeAttribute('opacity')
+
         const buildings = document.getElementById('layerBuildings').checked
         const ground = document.getElementById('layerGround').checked
         const screen = document.getElementById('layerPlane').checked
@@ -209,7 +221,7 @@
 
         observer.observe(projection, {
           attributes: true,
-          attributeFilter: ['position', 'rotation', 'fov', 'far', 'layers']
+          attributeFilter: ['position', 'rotation', 'fov', 'far', 'layers', 'opacity']
         })
       }
 

@@ -36,6 +36,7 @@ export default class Projection {
   id
   ready = false
   #focus
+  #opacity
   #index
 
   constructor({
@@ -56,6 +57,7 @@ export default class Projection {
     attributes,
     id,
     focus,
+    opacity,
     element,
     index
   } = {}) {
@@ -95,6 +97,7 @@ export default class Projection {
 
     this.texture = texture
     this.textureSource = textureSource
+    this.opacity = opacity
 
     this.createLayers()
     this.screen = screen
@@ -103,7 +106,6 @@ export default class Projection {
     this.helper = new CameraHelper(this.camera)
     this.#setHelperColor(0x00ff00)
     this.focus = focus
-
     this.ready = true
   }
 
@@ -211,6 +213,19 @@ export default class Projection {
     return this.#focus
   }
 
+  set opacity(opacity) {
+    this.#opacity = opacity || 1
+    Object.values(this.material).forEach((m) => {
+      m.transparent = true
+      m.opacity = opacity
+      m.needsUpdate = true
+    })
+  }
+
+  get opacity() {
+    return this.#opacity
+  }
+
   #setHelperColor = (color) => {
     const c = new Color(color)
     this.helper.setColors(c, c, c, c, c)
@@ -314,6 +329,7 @@ export default class Projection {
         camera: this.camera,
         texture: this.texture,
         transparent: true,
+        opacity: this.opacity,
         depthMap: this.renderTarget.depthTexture
       })
 
