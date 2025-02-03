@@ -36,7 +36,6 @@
           screen="true"
           layers="Buildings Ground"
           focus
-          opacity=".6"
         ></vantage-projection>
 
         <vantage-projection
@@ -49,6 +48,7 @@
           screen="true"
           pass-through=""
           fov="53"
+          opacity=".8"
         ></vantage-projection>
 
         <vantage-projection
@@ -125,7 +125,7 @@
       </div>
       <div>
         <label
-          >Projection opacity: <input id="opacity" type="number" min="0" max="1" step="0.1"
+          >Opacity: <input id="opacity" type="number" min="0" max="1" step="0.1"
         /></label>
       </div>
       <button onclick="toggleFirstPerson()">Toggle First Person</button>
@@ -167,7 +167,7 @@
 
         document.getElementById('fov').value = projection.getAttribute('fov') || ''
         document.getElementById('far').value = projection.getAttribute('far') || ''
-        document.getElementById('opacity').value = projection.getAttribute('opacity') || ''
+        document.getElementById('opacity').value = projection.getAttribute('opacity') || '1'
 
         const layers = projection.getAttribute('layers') || ''
         document.getElementById('layerBuildings').checked = layers.includes('Buildings')
