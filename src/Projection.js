@@ -38,7 +38,7 @@ export default class Projection {
   #focus
   #index
 
-  constructor ({
+  constructor({
     renderer,
     scene,
     layers,
@@ -107,28 +107,28 @@ export default class Projection {
     this.ready = true
   }
 
-  set index (index) {
+  set index(index) {
     this.#index = index
-    Object.keys(this.material).forEach(layer => {
+    Object.keys(this.material).forEach((layer) => {
       if (layer === 'vantage-renderer') return
       this.#layers[layer].material[this.index] = this.material[layer]
     })
   }
 
-  get index () {
+  get index() {
     return this.#index
   }
 
-  set layers (layers) {
+  set layers(layers) {
     this.#layerNames = layers
     this.updateLayers()
   }
 
-  get layers () {
+  get layers() {
     return this.#layerNames
   }
 
-  set bounds ({ bounds, auto }) {
+  set bounds({ bounds, auto }) {
     if (!this.camera?.isOrthographicCamera || bounds == null) return
     if (!auto) this.#bounds = bounds
     this.camera.left = bounds[0]
@@ -138,49 +138,49 @@ export default class Projection {
     this.update()
   }
 
-  get bounds () {
+  get bounds() {
     return this.#bounds
   }
 
-  set position (position) {
+  set position(position) {
     this.camera.position.set(...position)
     this.update()
   }
 
-  get position () {
+  get position() {
     return this.camera.position
   }
 
-  set rotation (rotation) {
+  set rotation(rotation) {
     this.camera.rotation.set(...rotation)
     this.update()
   }
 
-  get rotation () {
+  get rotation() {
     return this.camera.rotation
   }
 
-  set fov (fov) {
+  set fov(fov) {
     this.camera.fov = fov
     this.camera.updateProjectionMatrix()
     this.update()
   }
 
-  get fov () {
+  get fov() {
     return this.camera.fov
   }
 
-  set far (far) {
+  set far(far) {
     this.camera.far = far
     this.camera.updateProjectionMatrix()
     this.update()
   }
 
-  get far () {
+  get far() {
     return this.camera.far
   }
 
-  set texture (texture) {
+  set texture(texture) {
     this.#texture = texture
     for (const layer in this.#layers) {
       this.material[layer].texture = texture
@@ -188,30 +188,30 @@ export default class Projection {
     this.update()
   }
 
-  get texture () {
+  get texture() {
     return this.#texture
   }
 
-  set screen (screen) {
+  set screen(screen) {
     this.#screen = screen === true
     if (this.plane) this.plane.visible = this.#screen
     this.update()
   }
 
-  get screen () {
+  get screen() {
     return this.#screen
   }
 
-  set focus (focus) {
+  set focus(focus) {
     this.#focus = focus
     this.helper.visible = focus === true
   }
 
-  get focus () {
+  get focus() {
     return this.#focus
   }
 
-  #setHelperColor = color => {
+  #setHelperColor = (color) => {
     const c = new Color(color)
     this.helper.setColors(c, c, c, c, c)
   }
@@ -229,7 +229,7 @@ export default class Projection {
       polygonOffset: true,
       polygonOffsetFactor: 1.0,
       polygonOffsetUnits: 1.0
-    });
+    })
 
     // this.scene.overrideMaterial = new MeshBasicMaterial()
     this.scene.overrideMaterial = depthMaterial
@@ -284,12 +284,12 @@ export default class Projection {
     }
   }
 
-  createLayers () {
+  createLayers() {
     this.#layers = Object.fromEntries(
       this.scene
         .getObjectByName('vantage:base')
         ?.children.filter(({ isMesh }) => isMesh)
-        .map(layer => [layer.name, layer]) ?? []
+        .map((layer) => [layer.name, layer]) ?? []
     )
 
     if (this.plane == null) {
@@ -335,8 +335,8 @@ export default class Projection {
     })
   }
 
-  destroy () {
-    Object.values(this.material).forEach(material => {
+  destroy() {
+    Object.values(this.material).forEach((material) => {
       material.visible = false
       material.dispose()
     })
