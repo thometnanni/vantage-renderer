@@ -303,6 +303,7 @@ export default class Projection {
           side: DoubleSide
         })
       )
+      this.plane.renderOrder = 1
       this.scene.getObjectByName('vantage:screens').add(this.plane)
     }
 
