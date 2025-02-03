@@ -1,4 +1,16 @@
-import { Scene, WebGLRenderer, Vector3, Group } from 'three'
+import {
+  Scene,
+  WebGLRenderer,
+  Vector2,
+  Vector3,
+  Group,
+  SphereGeometry,
+  MeshBasicMaterial,
+  Mesh,
+  Plane,
+  Raycaster
+} from 'three'
+import { DragControls } from 'three/addons/controls/DragControls.js'
 import CameraOperator from './cameraOperator'
 import { loadTexture, parseAttribute, setupScene, setupLights } from './utils'
 import Projection from './Projection'
@@ -14,6 +26,9 @@ class VantageRenderer extends HTMLElement {
   controls = false
   mousePressed = true
   lastRotation = null
+  focusMarker = null
+  dragControls = null
+  mouse = new Vector2()
 
   constructor() {
     super()
@@ -59,6 +74,12 @@ class VantageRenderer extends HTMLElement {
     this.renderer.domElement.style = 'display: block; width: 100%; height: 100%;'
     shadow.appendChild(this.renderer.domElement)
 
+    this.renderer.domElement.addEventListener('pointermove', (event) => {
+      const rect = this.renderer.domElement.getBoundingClientRect()
+      this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+    })
+
     this.resizeCanvas()
     this.renderer.setAnimationLoop(this.update)
 
@@ -98,6 +119,62 @@ class VantageRenderer extends HTMLElement {
     const screens = new Group()
     screens.name = 'vantage:screens'
     this.scene.add(setupLights(), screens)
+
+    this.createFocusMarker()
+  }
+
+  createFocusMarker() {
+    const geom = new SphereGeometry(3, 16, 16)
+    const mat = new MeshBasicMaterial({
+      color: 0x00ff00,
+      transparent: true,
+      opacity: 1.0
+    })
+    this.focusMarker = new Mesh(geom, mat)
+    this.focusMarker.name = 'FocusMarker'
+    this.scene.add(this.focusMarker)
+    this.focusMarker.visible = false
+  }
+
+  initDragControls() {
+    if (this.dragControls) {
+      this.dragControls.dispose()
+      this.dragControls = null
+    }
+
+    const dragObjects = [this.focusMarker]
+
+    this.dragControls = new DragControls(
+      dragObjects,
+      this.cameraOperator.mapCamera,
+      this.renderer.domElement
+    )
+
+    this.dragControls.addEventListener('dragstart', () => {
+      if (this.cameraOperator.mapControls) {
+        this.cameraOperator.mapControls.enabled = false
+      }
+    })
+
+    this.dragControls.addEventListener('dragend', () => {
+      if (this.cameraOperator.mapControls) {
+        this.cameraOperator.mapControls.enabled = true
+      }
+    })
+
+    this.dragControls.addEventListener('drag', (e) => {
+      const focusProjection = Object.values(this.projections).find(({ focus }) => focus)
+      if (!focusProjection) return
+
+      const raycaster = new Raycaster()
+      raycaster.setFromCamera(this.mouse, this.cameraOperator.mapCamera)
+
+      const plane = new Plane(new Vector3(0, 1, 0), -focusProjection.camera.position.y)
+      const intersection = new Vector3()
+      raycaster.ray.intersectPlane(plane, intersection)
+
+      focusProjection.element.setAttribute('position', [...intersection].join(' '))
+    })
   }
 
   resizeCanvas() {
@@ -120,6 +197,23 @@ class VantageRenderer extends HTMLElement {
 
   update = () => {
     this.updateFocusCamera()
+    const focusProjection = Object.values(this.projections).find(({ focus }) => focus)
+    if (focusProjection && focusProjection.ready) {
+      this.focusMarker.visible = true
+      this.focusMarker.position.copy(focusProjection.camera.position)
+
+      if (!this.dragControls) {
+        this.initDragControls()
+      }
+    } else {
+      if (this.focusMarker) {
+        this.focusMarker.visible = false
+      }
+      if (this.dragControls) {
+        this.dragControls.dispose()
+        this.dragControls = null
+      }
+    }
     this.renderer.render(this.scene, this.cameraOperator.camera)
   }
 
