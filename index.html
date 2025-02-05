@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vantage Renderer</title>
   </head>
-
+  
   <body>
     <section>
       <vantage-renderer
@@ -124,9 +124,7 @@
         <label><input type="checkbox" id="layerPlane" />Plane</label>
       </div>
       <div>
-        <label
-          >Opacity: <input id="opacity" type="number" min="0" max="1" step="0.1"
-        /></label>
+        <label>Opacity: <input id="opacity" type="number" min="0" max="1" step="0.1" /></label>
       </div>
       <button onclick="toggleFirstPerson()">Toggle First Person</button>
     </div>
@@ -138,9 +136,43 @@
 
     <script type="module" src="/src/main.js"></script>
     <script>
+      function observeProjection(projection) {
+        if (projection._observerAttached) return
+        projection._observerAttached = true
+
+        const observer = new MutationObserver((mutations) => {
+          let updateValues = false
+          let updateSelector = false
+          mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'focus') {
+              updateSelector = true
+            } else {
+              updateValues = true
+            }
+          })
+          if (updateValues) {
+            loadProjectionValues(projection)
+          }
+          if (updateSelector && projection.hasAttribute('focus')) {
+            document.getElementById('projectionSelector').value = projection.id
+          }
+        })
+        observer.observe(projection, {
+          attributes: true,
+          attributeFilter: ['position', 'rotation', 'fov', 'far', 'layers', 'opacity', 'focus']
+        })
+      }
+
       document.addEventListener('DOMContentLoaded', () => {
         const selector = document.getElementById('projectionSelector')
+
+        document.querySelectorAll('vantage-projection').forEach((proj) => {
+          console.log('here')
+          observeProjection(proj)
+        })
+
         selector.addEventListener('change', () => selectProjection(selector.value))
+
         selectProjection(selector.value)
       })
 
@@ -151,7 +183,6 @@
         projection.setAttribute('focus', '')
 
         loadProjectionValues(projection)
-        observeProjection(projection)
       }
 
       function loadProjectionValues(projection) {
@@ -189,16 +220,26 @@
         const rotZ = parseFloat(document.getElementById('rotZ').value) || 0
         projection.setAttribute('rotation', `${rotX} ${rotY} ${rotZ}`)
 
-        const fov = parseFloat(document.getElementById('fov').value) || ''
-        fov !== '' ? projection.setAttribute('fov', fov) : projection.removeAttribute('fov')
+        const fov = document.getElementById('fov').value
+        if (fov !== '') {
+          projection.setAttribute('fov', parseFloat(fov))
+        } else {
+          projection.removeAttribute('fov')
+        }
 
-        const far = parseFloat(document.getElementById('far').value) || ''
-        far !== '' ? projection.setAttribute('far', far) : projection.removeAttribute('far')
+        const far = document.getElementById('far').value
+        if (far !== '') {
+          projection.setAttribute('far', parseFloat(far))
+        } else {
+          projection.removeAttribute('far')
+        }
 
-        const opacity = parseFloat(document.getElementById('opacity').value) || ''
-        opacity !== ''
-          ? projection.setAttribute('opacity', opacity)
-          : projection.removeAttribute('opacity')
+        const opacity = document.getElementById('opacity').value
+        if (opacity !== '') {
+          projection.setAttribute('opacity', parseFloat(opacity))
+        } else {
+          projection.removeAttribute('opacity')
+        }
 
         const buildings = document.getElementById('layerBuildings').checked
         const ground = document.getElementById('layerGround').checked
@@ -207,22 +248,13 @@
         const newLayers = []
         if (buildings) newLayers.push('Buildings')
         if (ground) newLayers.push('Ground')
-        newLayers.length
-          ? projection.setAttribute('layers', newLayers.join(' '))
-          : projection.removeAttribute('layers')
+        if (newLayers.length) {
+          projection.setAttribute('layers', newLayers.join(' '))
+        } else {
+          projection.removeAttribute('layers')
+        }
 
         projection.setAttribute('screen', screen ? true : false)
-      }
-
-      function observeProjection(projection) {
-        const observer = new MutationObserver(() => {
-          loadProjectionValues(projection)
-        })
-
-        observer.observe(projection, {
-          attributes: true,
-          attributeFilter: ['position', 'rotation', 'fov', 'far', 'layers', 'opacity']
-        })
       }
 
       function toggleFirstPerson() {
@@ -232,7 +264,9 @@
       }
 
       document.querySelector('.controls').addEventListener('input', (e) => {
-        if (e.target.matches('input[type="number"], input[type="checkbox"]')) applyChanges()
+        if (e.target.matches('input[type="number"], input[type="checkbox"]')) {
+          applyChanges()
+        }
       })
     </script>
   </body>
@@ -259,7 +293,7 @@
     }
 
     .controls div {
-      margin: 0 0 20px 0px;
+      margin: 0 0 20px 0;
     }
 
     .controls {

@@ -125,6 +125,7 @@ class VantageRenderer extends HTMLElement {
       this.focusOnCamera()
     })
   }
+
   focusOnCamera() {
     const raycaster = new Raycaster()
     raycaster.setFromCamera(this.mouse, this.cameraOperator.mapCamera)
@@ -149,7 +150,9 @@ class VantageRenderer extends HTMLElement {
       candidate.focus = true
       this.cameraOperator.camera = candidate.camera
     }
+    candidate.element.setAttribute('focus', true)
   }
+
   createFocusMarker() {
     const geom = new SphereGeometry(3, 16, 16)
     const mat = new MeshBasicMaterial({
