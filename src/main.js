@@ -119,10 +119,37 @@ class VantageRenderer extends HTMLElement {
     const screens = new Group()
     screens.name = 'vantage:screens'
     this.scene.add(setupLights(), screens)
-
     this.createFocusMarker()
-  }
 
+    this.renderer.domElement.addEventListener('click', () => {
+      this.focusOnCamera()
+    })
+  }
+  focusOnCamera() {
+    const raycaster = new Raycaster()
+    raycaster.setFromCamera(this.mouse, this.cameraOperator.mapCamera)
+
+    let candidate = null
+    let minDistance = Infinity
+
+    Object.values(this.projections).forEach((p) => {
+      if (p.attributes && p.attributes.orthographic) return
+      const targetObj = p.plane || p.helper
+      const intersects = raycaster.intersectObject(targetObj, true)
+      if (intersects.length > 0 && intersects[0].distance < minDistance) {
+        minDistance = intersects[0].distance
+        candidate = p
+      }
+    })
+
+    if (candidate) {
+      Object.values(this.projections).forEach((p) => {
+        if (p !== candidate) p.focus = false
+      })
+      candidate.focus = true
+      this.cameraOperator.camera = candidate.camera
+    }
+  }
   createFocusMarker() {
     const geom = new SphereGeometry(3, 16, 16)
     const mat = new MeshBasicMaterial({
@@ -235,7 +262,7 @@ class VantageRenderer extends HTMLElement {
 
     const index = Array.prototype.indexOf.call(this.children, element)
     Object.values(this.projections).forEach((projection) => {
-      if (projection.index >= index) projection.index++
+      if (projection.index >= index) projection.index
     })
 
     const projection = new Projection({
@@ -290,12 +317,7 @@ class VantageRenderer extends HTMLElement {
         break
       default:
         projection[property] = value
-      // projection.update()
     }
-    // if (projection.focus) {
-    //   // console.log('set focus')
-    //   this.cameraOperator.camera = projection.camera
-    // }
   }
 
   removeProjection({ id }) {
