@@ -71,6 +71,11 @@ class VantageRenderer extends HTMLElement {
     this.renderer.setPixelRatio(window.devicePixelRatio)
 
     const shadow = this.attachShadow({ mode: 'open' })
+
+    const style = document.createElement('style')
+    style.innerHTML = `:host {display: block; height: 100%; width: 100%; overflow: hidden}`
+    shadow.appendChild(style)
+
     this.renderer.domElement.style = 'display: block; width: 100%; height: 100%;'
     shadow.appendChild(this.renderer.domElement)
 
@@ -80,14 +85,10 @@ class VantageRenderer extends HTMLElement {
       this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
     })
 
-    this.resizeCanvas()
     this.renderer.setAnimationLoop(this.update)
 
-    this.resizeObserver = new ResizeObserver(() => this.resizeCanvas())
-
-    if (this.parentElement) {
-      this.resizeObserver.observe(this.parentElement)
-    }
+    this.resizeObserver = new ResizeObserver((entries) => this.resizeCanvas(entries[0].contentRect))
+    this.resizeObserver.observe(this.renderer.domElement)
 
     this.addEventListener('vantage:add-projection', (e) => this.addProjection(e.detail))
     this.addEventListener('vantage:update-projection', (e) => this.updateProjection(e.detail))
@@ -207,10 +208,7 @@ class VantageRenderer extends HTMLElement {
     })
   }
 
-  resizeCanvas() {
-    if (!this.parentElement) return
-    const { width, height } = this.parentElement.getBoundingClientRect()
-
+  resizeCanvas({ width, height }) {
     if (width > 0 && height > 0) {
       this.renderer.setSize(width, height, false)
 
