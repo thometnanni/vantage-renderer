@@ -146,12 +146,10 @@ class VantageRenderer extends HTMLElement {
 
     if (candidate) {
       Object.values(this.projections).forEach((p) => {
-        if (p !== candidate) p.focus = false
+        p.element.setAttribute('focus', p === candidate)
       })
-      candidate.focus = true
-      this.cameraOperator.camera = candidate.camera
+      candidate.element.setAttribute('focus', true)
     }
-    candidate.element.setAttribute('focus', true)
   }
 
   createFocusMarker() {
@@ -374,7 +372,7 @@ class VantageProjection extends HTMLElement {
   }
 
   async connectedCallback() {
-    this.projectionId = crypto.randomUUID().split('-')[0]
+    this.projectionId = this.id ?? crypto.randomUUID().split('-')[0]
     this.vantageRenderer = this.parentElement
     this.create()
   }

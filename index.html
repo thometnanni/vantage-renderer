@@ -153,7 +153,11 @@
           if (updateValues) {
             loadProjectionValues(projection)
           }
-          if (updateSelector && projection.hasAttribute('focus')) {
+          if (
+            updateSelector &&
+            projection.hasAttribute('focus') &&
+            projection.getAttribute('focus') !== 'false'
+          ) {
             document.getElementById('projectionSelector').value = projection.id
           }
         })
