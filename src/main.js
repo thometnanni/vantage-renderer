@@ -149,7 +149,7 @@ class VantageRenderer extends HTMLElement {
         p.element.setAttribute('focus', p === candidate)
       })
 
-      this.dispatchEvent(
+      candidate.element.dispatchEvent(
         new CustomEvent('vantage:set-focus', {
           bubbles: true,
           detail: {
