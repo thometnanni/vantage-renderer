@@ -144,7 +144,7 @@ class VantageRenderer extends HTMLElement {
     let minDistance = Infinity
 
     Object.values(this.projections).forEach((p) => {
-      if (p.attributes && p.attributes.projection_type == 'map') return
+      if (p.attributes && p.attributes['projection-type'] == 'map') return
       const targetObj = p.plane || p.helper
       const intersects = raycaster.intersectObject(targetObj, true)
       if (intersects.length > 0 && intersects[0].distance < minDistance) {
@@ -311,7 +311,7 @@ class VantageRenderer extends HTMLElement {
       fov: attributes.fov,
       ratio: width / height,
       far: attributes.far,
-      projection_type: attributes.projection_type,
+      projectionType: attributes['projection-type'],
       screen: attributes.screen,
       focus: attributes.focus,
       opacity: attributes.opacity,
@@ -374,7 +374,7 @@ class VantageProjection extends HTMLElement {
     'src',
     'position',
     'rotation',
-    'projection_type',
+    'projection-type',
     'fov',
     'far',
     'screen',
@@ -386,7 +386,7 @@ class VantageProjection extends HTMLElement {
   ]
   async attributeChangedCallback(name, oldValue, value) {
     if (this.projectionId == null) return
-    if (name === 'projection_type') {
+    if (name === 'projection-type') {
       this.destroy()
       this.create()
       return

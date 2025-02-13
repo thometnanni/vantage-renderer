@@ -51,7 +51,7 @@ export default class Projection {
     ratio = 16 / 9,
     far = 150,
     near = 1,
-    projection_type = 'perspective',
+    projectionType = 'perspective',
     textureSource,
     screen,
     attributes,
@@ -73,7 +73,7 @@ export default class Projection {
     // this.updateLayerMeshes()
 
     this.index = index
-    this.projectionType = projection_type
+    this.projectionType = projectionType
     if (this.projectionType === 'map') {
       this.camera = new OrthographicCamera(...(bounds ?? [100, -100, -100, 100]), 0, far)
       this.position = [0, 500, 0]
