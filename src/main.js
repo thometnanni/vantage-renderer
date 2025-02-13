@@ -148,7 +148,6 @@ class VantageRenderer extends HTMLElement {
       Object.values(this.projections).forEach((p) => {
         p.element.setAttribute('focus', p === candidate)
       })
-      candidate.element.setAttribute('focus', true)
 
       this.dispatchEvent(
         new CustomEvent('vantage:set-focus', {
