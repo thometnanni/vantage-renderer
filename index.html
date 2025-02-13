@@ -6,23 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vantage Renderer</title>
   </head>
-
+  
   <body>
     <section>
       <vantage-renderer
         scene="./media/scene.gltf"
-        controls="edit"
+        controls="edit" 
         first-person="false"
         style="pointer-events: auto"
       >
-        <!-- <vantage-projection id="projection-1" src="./media/map.png" orthographic="" position="0 500 0"
-      rotation="-1.5707963268 -1.5707963268 0" far="501"></vantage-projection> -->
+
         <vantage-projection
           id="projection-1"
           src="./media/aerial.jpg"
-          orthographic=""
-          position="0 500 0"
-          rotation="-1.5707963268 -1.5707963268 0"
+          projection_type="map"
           far="501"
         ></vantage-projection>
 
@@ -286,10 +283,6 @@
     section {
       width: 100vw;
       height: 100vh;
-
-      /* display: grid;
-      grid-template-columns: 1fr 350px;
-      grid-template-rows: 1fr 64px; */
     }
 
     h1,

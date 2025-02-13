@@ -51,7 +51,7 @@ export default class Projection {
     ratio = 16 / 9,
     far = 150,
     near = 1,
-    orthographic = false,
+    projection_type = 'perspective',
     textureSource,
     screen,
     attributes,
@@ -73,14 +73,20 @@ export default class Projection {
     // this.updateLayerMeshes()
 
     this.index = index
-
-    this.camera = orthographic
-      ? new OrthographicCamera(...(bounds ?? [100, -100, -100, 100]), 0, far)
-      : new PerspectiveCamera(fov, ratio, near, far)
-
-    this.position = position
-    this.rotation = rotation
-    // this.camera.rotation.reorder('YXZ')
+    this.projectionType = projection_type
+    if (this.projectionType === 'map') {
+      this.camera = new OrthographicCamera(...(bounds ?? [100, -100, -100, 100]), 0, far)
+      this.position = [0, 500, 0]
+      this.rotation = [-Math.PI / 2, -Math.PI / 2, 0, 'YXZ']
+    } else if (this.projectionType === 'orthographic') {
+      // to do
+      this.position = position
+      this.rotation = rotation
+    } else {
+      this.camera = new PerspectiveCamera(fov, ratio, near, far)
+      this.position = position
+      this.rotation = rotation
+    }
 
     this.renderTarget = new WebGLRenderTarget(2000, 2000)
     this.renderTarget.texture.format = RGBAFormat
@@ -131,7 +137,7 @@ export default class Projection {
   }
 
   set bounds({ bounds, auto }) {
-    if (!this.camera?.isOrthographicCamera || bounds == null) return
+    if (this.projectionType !== 'map' || bounds == null) return
     if (!auto) this.#bounds = bounds
     this.camera.left = bounds[0]
     this.camera.right = bounds[1]
@@ -269,23 +275,23 @@ export default class Projection {
   updatePlane = () => {
     if (this.plane == null) return
     this.plane.rotation.set(...this.camera.rotation)
-
-    const position = this.camera.isOrthographicCamera
-      ? [
-          (this.camera.top + this.camera.bottom) / 2,
-          this.camera.position.y,
-          (this.camera.right + this.camera.left) / 2
-        ]
-      : this.camera.position
-
-    this.plane.position.set(...position)
-    const scale = this.camera.isOrthographicCamera
+    
+    const position = this.projectionType === 'map'
+        ? [
+            (this.camera.top + this.camera.bottom) / 2,
+            this.camera.position.y,
+            (this.camera.right + this.camera.left) / 2
+          ]
+        : this.camera.position
+        
+        this.plane.position.set(...position)
+        const scale = this.projectionType === 'map'
       ? [this.camera.right - this.camera.left, this.camera.top - this.camera.bottom]
       : this.camera.getViewSize(this.camera.far, new Vector2())
+      
+      this.plane.scale.set(...scale, 1)
 
-    this.plane.scale.set(...scale, 1)
-
-    this.plane.translateZ(-this.camera.far + this.camera.far * 0.001)
+      this.plane.translateZ(-this.camera.far + this.camera.far * 0.001)
   }
 
   update = () => {

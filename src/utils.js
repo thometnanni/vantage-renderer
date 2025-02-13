@@ -77,7 +77,9 @@ function parseAttribute(name, value) {
     case 'fov':
     case 'far':
       return +value
-    case 'orthographic':
+    case 'projection_type': {
+      return ['perspective', 'orthographic', 'map'].includes(value) ? value : 'perspective'
+    }
     case 'screen':
     case 'focus':
     case 'pass-through':
