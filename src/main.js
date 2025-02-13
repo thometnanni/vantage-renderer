@@ -115,6 +115,15 @@ class VantageRenderer extends HTMLElement {
       const target = Object.values(this.projections).find(({ focus }) => focus)
       if (target == null) return
       target.element.setAttribute('rotation', value.join(' '))
+
+      target.element.dispatchEvent(
+        new CustomEvent('vantage:set-rotation', {
+          bubbles: true,
+          detail: {
+            rotation: value
+          }
+        })
+      )
     })
 
     const screens = new Group()
@@ -211,6 +220,14 @@ class VantageRenderer extends HTMLElement {
       raycaster.ray.intersectPlane(plane, intersection)
 
       focusProjection.element.setAttribute('position', [...intersection].join(' '))
+      focusProjection.element.dispatchEvent(
+        new CustomEvent('vantage:set-position', {
+          bubbles: true,
+          detail: {
+            position: [...intersection]
+          }
+        })
+      )
     })
   }
 
@@ -259,6 +276,14 @@ class VantageRenderer extends HTMLElement {
     const pos = this.cameraOperator.camera.getWorldPosition(new Vector3())
 
     target.element.setAttribute('position', [...pos].join(' '))
+    target.element.dispatchEvent(
+      new CustomEvent('vantage:set-position', {
+        bubbles: true,
+        detail: {
+          position: [...pos]
+        }
+      })
+    )
   }
 
   async addProjection({ id, attributes, element }) {
