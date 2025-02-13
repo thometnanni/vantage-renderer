@@ -116,15 +116,15 @@ export default class Projection {
   }
 
   set index(index) {
-    this.#index = index
+    this.#index = index + 1
     Object.keys(this.material).forEach((layer) => {
       if (layer === 'vantage-renderer') return
-      this.#layers[layer].material[this.index] = this.material[layer]
+      this.#layers[layer].material[index + 1] = this.material[layer]
     })
   }
 
   get index() {
-    return this.#index
+    return this.#index - 1
   }
 
   set layers(layers) {
@@ -275,23 +275,25 @@ export default class Projection {
   updatePlane = () => {
     if (this.plane == null) return
     this.plane.rotation.set(...this.camera.rotation)
-    
-    const position = this.projectionType === 'map'
+
+    const position =
+      this.projectionType === 'map'
         ? [
             (this.camera.top + this.camera.bottom) / 2,
             this.camera.position.y,
             (this.camera.right + this.camera.left) / 2
           ]
         : this.camera.position
-        
-        this.plane.position.set(...position)
-        const scale = this.projectionType === 'map'
-      ? [this.camera.right - this.camera.left, this.camera.top - this.camera.bottom]
-      : this.camera.getViewSize(this.camera.far, new Vector2())
-      
-      this.plane.scale.set(...scale, 1)
 
-      this.plane.translateZ(-this.camera.far + this.camera.far * 0.001)
+    this.plane.position.set(...position)
+    const scale =
+      this.projectionType === 'map'
+        ? [this.camera.right - this.camera.left, this.camera.top - this.camera.bottom]
+        : this.camera.getViewSize(this.camera.far, new Vector2())
+
+    this.plane.scale.set(...scale, 1)
+
+    this.plane.translateZ(-this.camera.far + this.camera.far * 0.001)
   }
 
   update = () => {
@@ -343,7 +345,7 @@ export default class Projection {
       if (layer === 'vantage:screen') {
         this.#layers[layer].material.push(this.material[layer])
       } else {
-        this.#layers[layer].material[this.index] = this.material[layer]
+        this.#layers[layer].material[this.#index] = this.material[layer]
       }
     }
 
