@@ -107,6 +107,18 @@ class VantageRenderer extends HTMLElement {
       )
     })
 
+    this.cameraOperator.addEventListener('vantage:update-fov', ({ value }) => {
+      const target = Object.values(this.projections).find(({ focus }) => focus)
+      if (target == null) return
+      target.element.setAttribute('fov', value)
+      target.element.dispatchEvent(
+        new CustomEvent('vantage:set-fov', {
+          bubbles: true,
+          detail: { fov: value }
+        })
+      )
+    })
+
     this.cameraOperator.addEventListener('vantage:update-focus-camera', ({ value }) => {
       if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
       const target = Object.values(this.projections).find(({ focus }) => focus)

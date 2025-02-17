@@ -70,6 +70,8 @@ export default class CameraOperator extends EventDispatcher {
     this.controls = controls
     document.addEventListener('keydown', this.keydown)
     document.addEventListener('mousedown', this.mousedown)
+    document.addEventListener('wheel', this.wheel)
+
     this.createFocusMarker()
   }
 
@@ -155,7 +157,7 @@ export default class CameraOperator extends EventDispatcher {
     // if (this.mapControls.enabled) return;
 
     switch (code) {
-      case 'KeyQ':
+      case 'KeyF':
         this.fpCamera.translateY(-1)
         break
 
@@ -163,7 +165,7 @@ export default class CameraOperator extends EventDispatcher {
         this.fpCamera.translateZ(-1)
         break
 
-      case 'KeyE':
+      case 'KeyG':
         this.fpCamera.translateY(1)
         break
 
@@ -223,6 +225,23 @@ export default class CameraOperator extends EventDispatcher {
         once: true
       }
     )
+  }
+
+  wheel = (event) => {
+    if (!this.fpControls.enabled || this.#focusCamera == null) return
+    this.fpControls.attachCamera(this.#focusCamera)
+
+    const delta = event.deltaY * 0.05
+    this.#focusCamera.fov += delta
+    this.#focusCamera.fov = Math.max(30, Math.min(100, this.#focusCamera.fov))
+    this.#focusCamera.updateProjectionMatrix()
+
+    this.fpControls.detachCamera()
+
+    this.dispatchEvent({
+      type: 'vantage:update-fov',
+      value: this.#focusCamera.fov
+    })
   }
 
   createFocusMarker() {
