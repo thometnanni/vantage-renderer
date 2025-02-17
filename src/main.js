@@ -108,6 +108,11 @@ class VantageRenderer extends HTMLElement {
 
     this.cameraOperator.addEventListener('vantage:unlock-first-person', () => {
       this.setAttribute('first-person', 'false')
+      this.dispatchEvent(
+        new CustomEvent('vantage:unlock-first-person', {
+          bubbles: true
+        })
+      )
     })
 
     this.cameraOperator.addEventListener('vantage:update-focus-camera', ({ value }) => {
