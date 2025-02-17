@@ -160,27 +160,33 @@ export default class CameraOperator extends EventDispatcher {
       case 'KeyF':
         this.fpCamera.translateY(-1)
         break
-
-      case 'KeyW':
-        this.fpCamera.translateZ(-1)
-        break
-
       case 'KeyR':
         this.fpCamera.translateY(1)
         break
-
-      case 'KeyA':
+      case 'KeyW': {
+        const fixedY = this.fpCamera.position.y
+        this.fpCamera.translateZ(-1)
+        this.fpCamera.position.y = fixedY
+        break
+      }
+      case 'KeyA': {
+        const fixedY = this.fpCamera.position.y
         this.fpCamera.translateX(-1)
+        this.fpCamera.position.y = fixedY
         break
-
-      case 'KeyS':
+      }
+      case 'KeyS': {
+        const fixedY = this.fpCamera.position.y
         this.fpCamera.translateZ(1)
+        this.fpCamera.position.y = fixedY
         break
-
-      case 'KeyD':
+      }
+      case 'KeyD': {
+        const fixedY = this.fpCamera.position.y
         this.fpCamera.translateX(1)
+        this.fpCamera.position.y = fixedY
         break
-
+      }
       case 'KeyQ':
         this.#focusCamera.rotateZ(0.02)
         this.dispatchEvent({
@@ -188,7 +194,6 @@ export default class CameraOperator extends EventDispatcher {
           value: [...this.#focusCamera.rotation].slice(0, -1)
         })
         break
-
       case 'KeyE':
         this.#focusCamera.rotateZ(-0.02)
         this.dispatchEvent({
