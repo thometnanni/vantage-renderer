@@ -165,7 +165,7 @@ export default class CameraOperator extends EventDispatcher {
         this.fpCamera.translateZ(-1)
         break
 
-      case 'KeyG':
+      case 'KeyR':
         this.fpCamera.translateY(1)
         break
 
@@ -180,32 +180,22 @@ export default class CameraOperator extends EventDispatcher {
       case 'KeyD':
         this.fpCamera.translateX(1)
         break
-    }
 
-    if (this.projection != null) {
-      switch (code) {
-        case 'ArrowUp':
-          this.projection.camera.isOrthographicCamera
-            ? (this.projection.camera.zoom += 0.01)
-            : this.projection.camera.fov++
-          break
+      case 'KeyQ':
+        this.#focusCamera.rotateZ(0.02)
+        this.dispatchEvent({
+          type: 'vantage:update-focus-camera',
+          value: [...this.#focusCamera.rotation].slice(0, -1)
+        })
+        break
 
-        case 'ArrowLeft':
-          this.projection.camera.rotateZ(0.02)
-          break
-
-        case 'ArrowDown':
-          this.projection.camera.isOrthographicCamera
-            ? (this.projection.camera.zoom -= 0.01)
-            : this.projection.camera.fov--
-          break
-
-        case 'ArrowRight':
-          this.projection.camera.rotateZ(-0.02)
-          break
-      }
-      this.projection.camera.position.set(...this.fpCamera.getWorldPosition(new Vector3()))
-      this.projection.update()
+      case 'KeyE':
+        this.#focusCamera.rotateZ(-0.02)
+        this.dispatchEvent({
+          type: 'vantage:update-focus-camera',
+          value: [...this.#focusCamera.rotation].slice(0, -1)
+        })
+        break
     }
   }
 
@@ -233,7 +223,7 @@ export default class CameraOperator extends EventDispatcher {
 
     const delta = event.deltaY * 0.05
     this.#focusCamera.fov += delta
-    this.#focusCamera.fov = Math.max(30, Math.min(100, this.#focusCamera.fov))
+    this.#focusCamera.fov = Math.max(0, Math.min(175, this.#focusCamera.fov))
     this.#focusCamera.updateProjectionMatrix()
 
     this.fpControls.detachCamera()
