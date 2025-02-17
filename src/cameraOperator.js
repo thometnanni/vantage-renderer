@@ -1,7 +1,18 @@
-import { PerspectiveCamera, Vector3, Quaternion, EventDispatcher } from 'three'
-
+import {
+  PerspectiveCamera,
+  Vector3,
+  Quaternion,
+  EventDispatcher,
+  SphereGeometry,
+  MeshBasicMaterial,
+  Mesh,
+  Raycaster,
+  Vector2,
+  Plane
+} from 'three'
 import { MapControls } from 'three/addons/controls/MapControls'
 import { PointerLockControls } from './CustomPointerLockControls'
+import { DragControls } from 'three/addons/controls/DragControls.js'
 
 export default class CameraOperator extends EventDispatcher {
   mapCamera = new PerspectiveCamera(60, innerWidth / innerHeight, 1, 10000)
@@ -11,10 +22,20 @@ export default class CameraOperator extends EventDispatcher {
   #firstPerson
   #controls
   #focusCamera
+  scene
+  domElement
+  focusMarker
+  dragControls
+  mouse = new Vector2()
 
-  constructor (renderer, { mapCameraPosition = [-100, 50, 50], domElement, firstPerson, controls }) {
+  constructor(
+    renderer,
+    { mapCameraPosition = [-100, 50, 50], domElement, scene, firstPerson, controls }
+  ) {
     super()
     // this.renderer = renderer
+    this.domElement = domElement
+    this.scene = scene
     this.mapCamera.position.set(...mapCameraPosition)
     // if (mapCameraRotation) {
     //   this.mapCamera.rotation.set(mapCameraRotation)
@@ -49,9 +70,10 @@ export default class CameraOperator extends EventDispatcher {
     this.controls = controls
     document.addEventListener('keydown', this.keydown)
     document.addEventListener('mousedown', this.mousedown)
+    this.createFocusMarker()
   }
 
-  set camera (camera) {
+  set camera(camera) {
     this.#focusCamera = camera
     if (!this.#firstPerson || camera == null) return
 
@@ -63,21 +85,21 @@ export default class CameraOperator extends EventDispatcher {
     this.fpCamera.updateProjectionMatrix()
   }
 
-  get camera () {
+  get camera() {
     return !this.#firstPerson ? this.mapCamera : this.fpCamera
   }
 
-  set firstPerson (firstPerson) {
+  set firstPerson(firstPerson) {
     this.#firstPerson = firstPerson
     if (firstPerson) this.fp()
     else this.map()
   }
 
-  get firstPerson () {
+  get firstPerson() {
     return this.#firstPerson
   }
 
-  set controls (controls) {
+  set controls(controls) {
     if (controls) {
       if (this.firstPerson) this.fp()
       else this.map()
@@ -86,20 +108,19 @@ export default class CameraOperator extends EventDispatcher {
     this.#controls = controls
   }
 
-  get controls () {
+  get controls() {
     return this.#controls
   }
 
-  map () {
+  map() {
     if (!this.controls || this.mapControls.enabled) return
 
     this.mapControls.enabled = true
     this.fpControls.enabled = false
     this.fpControls.unlock()
-    // this.projection = null;
   }
 
-  fp () {
+  fp() {
     if (!this.controls || this.fpControls.enabled) return
 
     this.mapControls.enabled = false
@@ -202,5 +223,88 @@ export default class CameraOperator extends EventDispatcher {
         once: true
       }
     )
+  }
+
+  createFocusMarker() {
+    const geom = new SphereGeometry(3, 16, 16)
+    const mat = new MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 1.0 })
+    this.focusMarker = new Mesh(geom, mat)
+    this.focusMarker.name = 'FocusMarker'
+    this.scene.add(this.focusMarker)
+    this.focusMarker.visible = false
+  }
+
+  updateFocusMarker(projections) {
+    const focusProjection = Object.values(projections).find((p) => p.focus && p.ready)
+    if (focusProjection) {
+      this.focusMarker.visible = true
+      this.focusMarker.position.copy(focusProjection.camera.position)
+    } else {
+      this.focusMarker.visible = false
+    }
+  }
+
+  focusOnCamera(projections) {
+    const raycaster = new Raycaster()
+    raycaster.setFromCamera(this.mouse, this.mapCamera)
+    let candidate = null
+    let minDistance = Infinity
+    Object.values(projections).forEach((p) => {
+      if (p.attributes && p.attributes['projection-type'] === 'map') return
+      const targetObj = p.plane || p.helper
+      const intersects = raycaster.intersectObject(targetObj, true)
+      if (intersects.length > 0 && intersects[0].distance < minDistance) {
+        minDistance = intersects[0].distance
+        candidate = p
+      }
+    })
+    if (candidate) {
+      Object.values(projections).forEach((p) => {
+        p.element.setAttribute('focus', p === candidate)
+      })
+      candidate.element.dispatchEvent(
+        new CustomEvent('vantage:set-focus', { bubbles: true, detail: { id: candidate.id } })
+      )
+    }
+  }
+
+  updateMouse(event) {
+    const rect = this.domElement.getBoundingClientRect()
+    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  }
+
+  initDragControls(projections) {
+    if (this.dragControls) {
+      this.dragControls.dispose()
+      this.dragControls = null
+    }
+    this.dragControls = new DragControls([this.focusMarker], this.mapCamera, this.domElement)
+    this.dragControls.addEventListener('dragstart', () => {
+      if (this.mapControls) {
+        this.mapControls.enabled = false
+      }
+    })
+    this.dragControls.addEventListener('dragend', () => {
+      if (this.mapControls) {
+        this.mapControls.enabled = true
+      }
+    })
+    this.dragControls.addEventListener('drag', () => {
+      const focusProjection = Object.values(projections).find((p) => p.focus)
+      if (!focusProjection) return
+      const raycaster = new Raycaster()
+      raycaster.setFromCamera(this.mouse, this.mapCamera)
+      const plane = new Plane(new Vector3(0, 1, 0), -focusProjection.camera.position.y)
+      const intersection = new Vector3()
+      raycaster.ray.intersectPlane(plane, intersection)
+      focusProjection.element.setAttribute('position', [...intersection].join(' '))
+      focusProjection.element.dispatchEvent(
+        new CustomEvent('vantage:set-position', {
+          bubbles: true,
+          detail: { position: [...intersection] }
+        })
+      )
+    })
   }
 }

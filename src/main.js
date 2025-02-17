@@ -1,16 +1,4 @@
-import {
-  Scene,
-  WebGLRenderer,
-  Vector2,
-  Vector3,
-  Group,
-  SphereGeometry,
-  MeshBasicMaterial,
-  Mesh,
-  Plane,
-  Raycaster
-} from 'three'
-import { DragControls } from 'three/addons/controls/DragControls.js'
+import { Scene, WebGLRenderer, Vector2, Vector3, Group } from 'three'
 import CameraOperator from './cameraOperator'
 import { loadTexture, parseAttribute, setupScene, setupLights } from './utils'
 import Projection from './Projection'
@@ -26,8 +14,6 @@ class VantageRenderer extends HTMLElement {
   controls = false
   mousePressed = true
   lastRotation = null
-  focusMarker = null
-  dragControls = null
   mouse = new Vector2()
 
   constructor() {
@@ -35,6 +21,7 @@ class VantageRenderer extends HTMLElement {
   }
 
   static observedAttributes = ['scene', 'first-person', 'controls']
+
   async attributeChangedCallback(name, _oldValue, newValue) {
     const value = parseAttribute(name, newValue)
     switch (name) {
@@ -83,6 +70,9 @@ class VantageRenderer extends HTMLElement {
       const rect = this.renderer.domElement.getBoundingClientRect()
       this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
       this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+      if (this.cameraOperator) {
+        this.cameraOperator.updateMouse(event)
+      }
     })
 
     this.renderer.setAnimationLoop(this.update)
@@ -101,9 +91,11 @@ class VantageRenderer extends HTMLElement {
     })
 
     this.cameraOperator = new CameraOperator(this.renderer, {
+      mapCameraPosition: [-100, 50, 50],
+      domElement: this,
+      scene: this.scene,
       firstPerson: parseAttribute('first-person', this.attributes['first-person']?.value),
-      controls: parseAttribute('controls', this.attributes['controls']?.value),
-      domElement: this
+      controls: parseAttribute('controls', this.attributes['controls']?.value)
     })
 
     this.cameraOperator.addEventListener('vantage:unlock-first-person', () => {
@@ -120,7 +112,6 @@ class VantageRenderer extends HTMLElement {
       const target = Object.values(this.projections).find(({ focus }) => focus)
       if (target == null) return
       target.element.setAttribute('rotation', value.join(' '))
-
       target.element.dispatchEvent(
         new CustomEvent('vantage:set-rotation', {
           bubbles: true,
@@ -134,106 +125,10 @@ class VantageRenderer extends HTMLElement {
     const screens = new Group()
     screens.name = 'vantage:screens'
     this.scene.add(setupLights(), screens)
-    this.createFocusMarker()
 
-    this.renderer.domElement.addEventListener('click', () => {
-      this.focusOnCamera()
-    })
-  }
-
-  focusOnCamera() {
-    const raycaster = new Raycaster()
-    raycaster.setFromCamera(this.mouse, this.cameraOperator.mapCamera)
-
-    let candidate = null
-    let minDistance = Infinity
-
-    Object.values(this.projections).forEach((p) => {
-      if (p.attributes && p.attributes['projection-type'] == 'map') return
-      const targetObj = p.plane || p.helper
-      const intersects = raycaster.intersectObject(targetObj, true)
-      if (intersects.length > 0 && intersects[0].distance < minDistance) {
-        minDistance = intersects[0].distance
-        candidate = p
-      }
-    })
-
-    if (candidate) {
-      Object.values(this.projections).forEach((p) => {
-        p.element.setAttribute('focus', p === candidate)
-      })
-
-      candidate.element.dispatchEvent(
-        new CustomEvent('vantage:set-focus', {
-          bubbles: true,
-          detail: {
-            id: candidate.id
-          }
-        })
-      )
-    }
-  }
-
-  createFocusMarker() {
-    const geom = new SphereGeometry(3, 16, 16)
-    const mat = new MeshBasicMaterial({
-      color: 0x00ff00,
-      transparent: true,
-      opacity: 1.0
-    })
-    this.focusMarker = new Mesh(geom, mat)
-    this.focusMarker.name = 'FocusMarker'
-    this.scene.add(this.focusMarker)
-    this.focusMarker.visible = false
-  }
-
-  initDragControls() {
-    if (this.dragControls) {
-      this.dragControls.dispose()
-      this.dragControls = null
-    }
-
-    const dragObjects = [this.focusMarker]
-
-    this.dragControls = new DragControls(
-      dragObjects,
-      this.cameraOperator.mapCamera,
-      this.renderer.domElement
-    )
-
-    this.dragControls.addEventListener('dragstart', () => {
-      if (this.cameraOperator.mapControls) {
-        this.cameraOperator.mapControls.enabled = false
-      }
-    })
-
-    this.dragControls.addEventListener('dragend', () => {
-      if (this.cameraOperator.mapControls) {
-        this.cameraOperator.mapControls.enabled = true
-      }
-    })
-
-    this.dragControls.addEventListener('drag', (e) => {
-      const focusProjection = Object.values(this.projections).find(({ focus }) => focus)
-      if (!focusProjection) return
-
-      const raycaster = new Raycaster()
-      raycaster.setFromCamera(this.mouse, this.cameraOperator.mapCamera)
-
-      const plane = new Plane(new Vector3(0, 1, 0), -focusProjection.camera.position.y)
-      const intersection = new Vector3()
-      raycaster.ray.intersectPlane(plane, intersection)
-
-      focusProjection.element.setAttribute('position', [...intersection].join(' '))
-      focusProjection.element.dispatchEvent(
-        new CustomEvent('vantage:set-position', {
-          bubbles: true,
-          detail: {
-            position: [...intersection]
-          }
-        })
-      )
-    })
+    // this.renderer.domElement.addEventListener('click', () => {
+    //   this.cameraOperator.focusOnCamera(this.projections)
+    // })
   }
 
   resizeCanvas({ width, height }) {
@@ -255,19 +150,18 @@ class VantageRenderer extends HTMLElement {
     this.updateFocusCamera()
     const focusProjection = Object.values(this.projections).find(({ focus }) => focus)
     if (focusProjection && focusProjection.ready) {
-      this.focusMarker.visible = true
-      this.focusMarker.position.copy(focusProjection.camera.position)
-
-      if (!this.dragControls) {
-        this.initDragControls()
+      this.cameraOperator.focusMarker.visible = true
+      this.cameraOperator.focusMarker.position.copy(focusProjection.camera.position)
+      if (!this.cameraOperator.dragControls) {
+        this.cameraOperator.initDragControls(this.projections)
       }
     } else {
-      if (this.focusMarker) {
-        this.focusMarker.visible = false
+      if (this.cameraOperator.focusMarker) {
+        this.cameraOperator.focusMarker.visible = false
       }
-      if (this.dragControls) {
-        this.dragControls.dispose()
-        this.dragControls = null
+      if (this.cameraOperator.dragControls) {
+        this.cameraOperator.dragControls.dispose()
+        this.cameraOperator.dragControls = null
       }
     }
     this.renderer.render(this.scene, this.cameraOperator.camera)
@@ -277,9 +171,7 @@ class VantageRenderer extends HTMLElement {
     if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
     const target = Object.values(this.projections).find(({ focus }) => focus)
     if (target == null) return
-
     const pos = this.cameraOperator.camera.getWorldPosition(new Vector3())
-
     target.element.setAttribute('position', [...pos].join(' '))
     target.element.dispatchEvent(
       new CustomEvent('vantage:set-position', {
