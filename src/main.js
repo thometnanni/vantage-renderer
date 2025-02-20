@@ -20,7 +20,7 @@ class VantageRenderer extends HTMLElement {
     super()
   }
 
-  static observedAttributes = ['scene', 'first-person', 'controls']
+  static observedAttributes = ['scene', 'first-person', 'controls', 'time']
 
   async attributeChangedCallback(name, _oldValue, newValue) {
     const value = parseAttribute(name, newValue)
@@ -48,6 +48,11 @@ class VantageRenderer extends HTMLElement {
         this.controls = value
         if (!this.cameraOperator) return
         this.cameraOperator.controls = value
+        break
+      case 'time':
+        Object.values(this.projections).forEach(({ element }) => {
+          element.updateTime(value)
+        })
         break
       default:
         break
@@ -82,6 +87,13 @@ class VantageRenderer extends HTMLElement {
 
     this.addEventListener('vantage:add-projection', (e) => this.addProjection(e.detail))
     this.addEventListener('vantage:update-projection', (e) => this.updateProjection(e.detail))
+    this.addEventListener('vantage:update-projection-multi', (e) => {
+      const { id, attributes } = e.detail
+
+      Object.entries(attributes).forEach(([property, value]) =>
+        this.updateProjection({ id, property, value })
+      )
+    })
     this.addEventListener('vantage:remove-projection', (e) => this.removeProjection(e.detail))
 
     this.addEventListener('mousedown', () => {
@@ -236,6 +248,7 @@ class VantageRenderer extends HTMLElement {
     }
 
     this.projections[id] = projection
+    element.updateTime(parseAttribute('time', this.getAttribute('time') ?? 0))
   }
 
   async updateProjection({ id, property, value }) {
@@ -278,6 +291,8 @@ class VantageProjection extends HTMLElement {
     super()
     this.root = null
     this.projectionId = null
+    this.rendererTime = null
+    this.keyframes = {}
   }
   static observedAttributes = [
     'src',
@@ -314,8 +329,14 @@ class VantageProjection extends HTMLElement {
   }
 
   async connectedCallback() {
-    this.projectionId = this.id ?? crypto.randomUUID().split('-')[0]
+    this.projectionId = this.id || crypto.randomUUID().split('-')[0]
     this.vantageRenderer = this.parentElement
+    this.rendererTime = parseAttribute('time', this.parentElement.getAttribute('time') ?? 0)
+
+    this.addEventListener('vantage:add-keyframe', (e) => this.addKeyframe(e.detail))
+    this.addEventListener('vantage:update-keyframe', (e) => this.updateKeyframe(e.detail))
+    this.addEventListener('vantage:remove-keyframe', (e) => this.removeKeyframe(e.detail))
+
     this.create()
   }
 
@@ -349,8 +370,117 @@ class VantageProjection extends HTMLElement {
     })
     this.vantageRenderer.dispatchEvent(event)
   }
+
+  updateTime(time) {
+    this.rendererTime = time
+    this.update()
+  }
+
+  async addKeyframe({ id, attributes }) {
+    this.keyframes[id] = attributes
+    this.update()
+  }
+
+  async updateKeyframe({ id, property, value }) {
+    this.keyframes[id][property] = value
+    this.update()
+  }
+
+  removeKeyframe({ id }) {
+    delete this.projections[id]
+    this.update()
+  }
+
+  update() {
+    if (Object.keys(this.keyframes).length === 0) return
+    const keyframes = Object.values(this.keyframes).toSorted((a, b) => a.time - b.time)
+
+    // do interpolation here instead
+    const keyframe = keyframes.findLast(({ time }) => time <= this.rendererTime) ?? keyframes[0]
+    this.dispatchEvent(
+      new CustomEvent('vantage:update-projection-multi', {
+        bubbles: true,
+        detail: {
+          id: this.projectionId,
+          attributes: keyframe
+        }
+      })
+    )
+  }
+}
+
+class VantageKeyframe extends HTMLElement {
+  constructor() {
+    super()
+    this.root = null
+    this.keyframeId = null
+  }
+  static observedAttributes = [
+    'position',
+    'rotation',
+    'fov',
+    'far',
+    'screen',
+    'bounds',
+    'focus',
+    'opacity',
+    'pass-through',
+    'time'
+  ]
+  async attributeChangedCallback(name, oldValue, value) {
+    if (this.keyframeId == null) return
+    this.dispatchEvent(
+      new CustomEvent('vantage:update-keyframe', {
+        bubbles: true,
+        detail: {
+          id: this.keyframeId,
+          property: name,
+          value: parseAttribute(name, value),
+          oldValue: parseAttribute(name, oldValue)
+        }
+      })
+    )
+  }
+
+  async connectedCallback() {
+    this.keyframeId = this.id || crypto.randomUUID().split('-')[0]
+    this.vantageProjection = this.parentElement
+    this.create()
+  }
+
+  create() {
+    const attributes = Object.fromEntries(
+      [...this.attributes].map(({ name, value }) => [name, parseAttribute(name, value)])
+    )
+
+    const event = new CustomEvent('vantage:add-keyframe', {
+      bubbles: true,
+      detail: {
+        id: this.keyframeId,
+        element: this,
+        attributes
+      }
+    })
+
+    this.dispatchEvent(event)
+  }
+
+  disconnectedCallback() {
+    this.destroy()
+  }
+
+  destroy() {
+    const event = new CustomEvent('vantage:remove-keyframe', {
+      bubbles: true,
+      detail: {
+        id: this.keyframeId
+      }
+    })
+    this.vantageProjection.dispatchEvent(event)
+  }
 }
 
 customElements.define('vantage-renderer', VantageRenderer)
 customElements.define('vantage-projection', VantageProjection)
+customElements.define('vantage-keyframe', VantageKeyframe)
 export default VantageRenderer

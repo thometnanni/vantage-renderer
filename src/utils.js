@@ -76,6 +76,7 @@ function parseAttribute(name, value) {
       return [...value.matchAll(/'([^']+)'|"([^"]+)"|([^ ]+)/g)].map((d) => d[1] ?? d[2] ?? d[3])
     case 'fov':
     case 'far':
+    case 'time':
       return +value
     case 'projection-type': {
       return ['perspective', 'orthographic', 'map'].includes(value) ? value : 'perspective'
