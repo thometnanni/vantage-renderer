@@ -21,9 +21,15 @@ async function loadTexture(url) {
       el.crossOrigin = true
       el.playsInline = true
       el.muted = true
-      el.loop = true
-      el.play()
-      el.addEventListener('playing', () => resolve(el), { once: true })
+      el.loop = false
+      el.addEventListener(
+        'loadedmetadata',
+        () => {
+          el.pause()
+          resolve(el)
+        },
+        { once: true }
+      )
     })
     return new VideoTexture(media)
   } else {
@@ -139,4 +145,38 @@ function setupLights() {
   return lights
 }
 
-export { loadTexture, loadScene, unpackGroup, parseAttribute, setupScene, setupLights }
+function getActiveKeyframe(projection) {
+  const keyframes = Array.from(projection.querySelectorAll('vantage-keyframe'))
+  if (!keyframes.length) return null
+  let active = keyframes[0]
+  keyframes.forEach((kf) => {
+    const t = parseFloat(kf.getAttribute('time')) || 0
+    if (
+      t <= (parseFloat(projection.closest('vantage-renderer').getAttribute('time')) || 0) &&
+      t > (parseFloat(active.getAttribute('time')) || 0)
+    ) {
+      active = kf
+    }
+  })
+  return active
+}
+
+function getSelectedKeyframe(projection) {
+  const keyframes = Array.from(projection.querySelectorAll('vantage-keyframe'))
+  const keyframeSelector = document.getElementById('keyframeSelector')
+  if (keyframeSelector && keyframeSelector.options.length > 0) {
+    const index = parseInt(keyframeSelector.value, 10)
+    if (!isNaN(index) && keyframes[index]) return keyframes[index]
+  }
+  return getActiveKeyframe(projection)
+}
+
+export {
+  loadTexture,
+  loadScene,
+  unpackGroup,
+  parseAttribute,
+  setupScene,
+  setupLights,
+  getSelectedKeyframe
+}

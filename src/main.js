@@ -1,6 +1,6 @@
 import { Scene, WebGLRenderer, Vector2, Vector3, Group } from 'three'
 import CameraOperator from './cameraOperator'
-import { loadTexture, parseAttribute, setupScene, setupLights } from './utils'
+import { loadTexture, parseAttribute, setupScene, setupLights, getSelectedKeyframe } from './utils'
 import Projection from './Projection'
 
 class VantageRenderer extends HTMLElement {
@@ -15,6 +15,8 @@ class VantageRenderer extends HTMLElement {
   mousePressed = true
   lastRotation = null
   mouse = new Vector2()
+  initialKeyframeRotation = null
+  initialCameraRotation = null
 
   constructor() {
     super()
@@ -98,8 +100,27 @@ class VantageRenderer extends HTMLElement {
 
     this.addEventListener('mousedown', () => {
       this.mousePressed = true
-      this.lastRotation = null
-      this.addEventListener('mouseup', () => (this.mousePressed = false), { once: true })
+      const focusedProjection = Object.values(this.projections).find(({ focus }) => focus)
+      if (focusedProjection) {
+        const keyframe = getSelectedKeyframe(focusedProjection.element)
+        if (keyframe) {
+          this.initialKeyframeRotation = keyframe.getAttribute('rotation').split(' ').map(Number)
+          this.cameraOperator.fpCamera.rotation.setFromQuaternion(
+            this.cameraOperator.fpCamera.quaternion,
+            'YXZ'
+          )
+          this.initialCameraRotation = [...this.cameraOperator.fpCamera.rotation].slice(0, 3)
+        }
+      }
+      this.addEventListener(
+        'mouseup',
+        () => {
+          this.mousePressed = false
+          this.initialKeyframeRotation = null
+          this.initialCameraRotation = null
+        },
+        { once: true }
+      )
     })
 
     this.cameraOperator = new CameraOperator(this.renderer, {
@@ -133,15 +154,17 @@ class VantageRenderer extends HTMLElement {
 
     this.cameraOperator.addEventListener('vantage:update-focus-camera', ({ value }) => {
       if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
-      const target = Object.values(this.projections).find(({ focus }) => focus)
-      if (target == null) return
-      target.element.setAttribute('rotation', value.join(' '))
-      target.element.dispatchEvent(
+      const focusedProjection = Array.from(document.querySelectorAll('vantage-projection')).find(
+        (p) => p.hasAttribute('focus') && p.getAttribute('focus') !== 'false'
+      )
+      if (!focusedProjection) return
+      const keyframe = getSelectedKeyframe(focusedProjection)
+      if (!keyframe) return
+      keyframe.setAttribute('rotation', value.join(' '))
+      keyframe.dispatchEvent(
         new CustomEvent('vantage:set-rotation', {
           bubbles: true,
-          detail: {
-            rotation: value
-          }
+          detail: { rotation: value }
         })
       )
     })
@@ -172,6 +195,7 @@ class VantageRenderer extends HTMLElement {
 
   update = () => {
     this.updateFocusCamera()
+    this.updateFocusRotation()
     const focusProjection = Object.values(this.projections).find(({ focus }) => focus)
     if (focusProjection && focusProjection.ready) {
       this.cameraOperator.focusMarker.visible = true
@@ -193,16 +217,50 @@ class VantageRenderer extends HTMLElement {
 
   updateFocusCamera = () => {
     if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
-    const target = Object.values(this.projections).find(({ focus }) => focus)
-    if (target == null) return
+    const projection = Object.values(this.projections).find(({ focus }) => focus)
+    if (!projection) return
     const pos = this.cameraOperator.camera.getWorldPosition(new Vector3())
-    target.element.setAttribute('position', [...pos].join(' '))
-    target.element.dispatchEvent(
+    const keyframe = getSelectedKeyframe(projection.element)
+    if (!keyframe) return
+    keyframe.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`)
+    keyframe.dispatchEvent(
       new CustomEvent('vantage:set-position', {
         bubbles: true,
-        detail: {
-          position: [...pos]
-        }
+        detail: { position: [...pos] }
+      })
+    )
+  }
+
+  updateFocusRotation = () => {
+    if (
+      this.controls !== 'edit' ||
+      !this.cameraOperator.firstPerson ||
+      !this.mousePressed ||
+      !this.initialKeyframeRotation ||
+      !this.initialCameraRotation
+    ) {
+      return
+    }
+
+    // probably there's a betterr way to do this
+    this.cameraOperator.fpCamera.rotation.setFromQuaternion(
+      this.cameraOperator.fpCamera.quaternion,
+      'YXZ'
+    )
+    const currentCameraRotation = [...this.cameraOperator.fpCamera.rotation].slice(0, 3)
+    const deltaRotation = currentCameraRotation.map((val, i) => val - this.initialCameraRotation[i])
+    const newRotation = this.initialKeyframeRotation.map((val, i) => val + deltaRotation[i])
+    const projection = Object.values(this.projections).find(({ focus }) => focus)
+    if (!projection) return
+    const keyframe = getSelectedKeyframe(projection.element)
+    if (!keyframe) return
+
+    keyframe.setAttribute('rotation', newRotation.join(' '))
+
+    projection.element.dispatchEvent(
+      new CustomEvent('vantage:set-rotation', {
+        bubbles: true,
+        detail: { rotation: newRotation }
       })
     )
   }
@@ -391,11 +449,30 @@ class VantageProjection extends HTMLElement {
     this.update()
   }
 
+  selectActiveKeyframe(globalTime) {
+    const keyframes = Array.from(this.querySelectorAll('vantage-keyframe'))
+    const valid = keyframes.filter((kf) => parseFloat(kf.getAttribute('time')) <= globalTime)
+    if (valid.length === 0) return null
+    return valid.reduce((prev, curr) =>
+      parseFloat(curr.getAttribute('time')) > parseFloat(prev.getAttribute('time')) ? curr : prev
+    )
+  }
+
+  updateActiveKeyframeFromTransform() {
+    const activeKeyframe = this.querySelector('vantage-keyframe')
+    if (!activeKeyframe) return
+    const pos = this.camera.position
+    const rot = this.camera.rotation
+    activeKeyframe.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`)
+    activeKeyframe.setAttribute('rotation', `${rot.x} ${rot.y} ${rot.z}`)
+    activeKeyframe.setAttribute('fov', this.camera.fov)
+    activeKeyframe.setAttribute('far', this.camera.far)
+  }
+
   update() {
     if (Object.keys(this.keyframes).length === 0) return
     const keyframes = Object.values(this.keyframes).toSorted((a, b) => a.time - b.time)
 
-    // do interpolation here instead
     const keyframe = keyframes.findLast(({ time }) => time <= this.rendererTime) ?? keyframes[0]
     this.dispatchEvent(
       new CustomEvent('vantage:update-projection-multi', {
