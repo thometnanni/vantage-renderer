@@ -212,6 +212,10 @@ class VantageRenderer extends HTMLElement {
         this.cameraOperator.dragControls = null
       }
     }
+
+    this.renderer.render(this.scene, this.cameraOperator.camera)
+    this.renderer.clearDepth()
+    this.cameraOperator.camera.layers.enable(2)
     this.renderer.render(this.scene, this.cameraOperator.camera)
   }
 

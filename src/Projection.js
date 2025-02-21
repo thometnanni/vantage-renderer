@@ -112,6 +112,7 @@ export default class Projection {
 
     this.helper = new CameraHelper(this.camera)
     this.#setHelperColor(0x00ff00)
+    this.helper.layers.set(2)
     this.focus = focus
     this.ready = true
   }

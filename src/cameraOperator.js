@@ -255,6 +255,7 @@ export default class CameraOperator extends EventDispatcher {
     const mat = new MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 1.0 })
     this.focusMarker = new Mesh(geom, mat)
     this.focusMarker.name = 'FocusMarker'
+    this.focusMarker.layers.set(2);
     this.scene.add(this.focusMarker)
     this.focusMarker.visible = false
   }
@@ -305,6 +306,8 @@ export default class CameraOperator extends EventDispatcher {
       this.dragControls = null
     }
     this.dragControls = new DragControls([this.focusMarker], this.mapCamera, this.domElement)
+    this.dragControls.raycaster.layers.enable(2)
+
     this.dragControls.addEventListener('dragstart', () => {
       if (this.mapControls) {
         this.mapControls.enabled = false
@@ -340,6 +343,7 @@ export default class CameraOperator extends EventDispatcher {
           })
         )
       }
+      
     })
   }
 }
