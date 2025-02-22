@@ -156,6 +156,7 @@ export default class CameraOperator extends EventDispatcher {
   keydown = ({ code }) => {
     if (!this.controls) return
     // if (this.mapControls.enabled) return;
+    if (this.firstPerson && !this.fpControls.enabled) return;
 
     switch (code) {
       case 'KeyF':
