@@ -194,13 +194,63 @@ class VantageRenderer extends HTMLElement {
   }
 
   update = () => {
-    this.updateFocusCamera()
-    this.updateFocusRotation()
-    const focusProjection = Object.values(this.projections).find(({ focus }) => focus)
+
+    // needs fixing
+    const globalTime = parseFloat(this.getAttribute('time')) || 0
+    const focusProjection = Object.values(this.projections).find((p) => p.focus)
+
+    if (focusProjection && focusProjection.ready) {
+      const activeKeyframe = getSelectedKeyframe(focusProjection.element)
+      const keyframeTime = activeKeyframe ? parseFloat(activeKeyframe.getAttribute('time')) : 0
+
+      if (this.cameraOperator.firstPerson) {
+        if (globalTime === keyframeTime) {
+          this.cameraOperator.fpControls.enabled = true
+          if (!this.cameraOperator.dragControls) {
+            this.cameraOperator.initDragControls(this.projections)
+          }
+          this.updateFocusCamera()
+          this.updateFocusRotation()
+          this.cameraOperator.camera.position.copy(this.cameraOperator.fpCamera.position)
+          this.cameraOperator.camera.quaternion.copy(this.cameraOperator.fpCamera.quaternion)
+          this.cameraOperator.camera.fov = this.cameraOperator.fpCamera.fov
+          this.cameraOperator.camera.updateProjectionMatrix()
+        } else {
+          this.cameraOperator.fpControls.enabled = false
+          if (this.cameraOperator.dragControls) {
+            this.cameraOperator.dragControls.dispose()
+            this.cameraOperator.dragControls = null
+          }
+          const keyframeData = focusProjection.getInterpolatedKeyframe(globalTime)
+          if (keyframeData) {
+            focusProjection.updateCameraFromKeyframe(keyframeData)
+          }
+          this.cameraOperator.camera.position.copy(focusProjection.camera.position)
+          this.cameraOperator.camera.quaternion.copy(focusProjection.camera.quaternion)
+          this.cameraOperator.camera.fov = focusProjection.camera.fov
+          this.cameraOperator.camera.updateProjectionMatrix()
+        }
+      } else {
+        const keyframeData = focusProjection.getInterpolatedKeyframe(globalTime)
+        if (keyframeData) {
+          focusProjection.updateCameraFromKeyframe(keyframeData)
+        }
+      }
+    }
+
     if (focusProjection && focusProjection.ready) {
       this.cameraOperator.focusMarker.visible = true
       this.cameraOperator.focusMarker.position.copy(focusProjection.camera.position)
-      if (!this.cameraOperator.dragControls) {
+      if (this.cameraOperator.firstPerson) {
+        const activeKeyframe = getSelectedKeyframe(focusProjection.element)
+        const keyframeTime = activeKeyframe ? parseFloat(activeKeyframe.getAttribute('time')) : 0
+        if (globalTime === keyframeTime && !this.cameraOperator.dragControls) {
+          this.cameraOperator.initDragControls(this.projections)
+        } else if (globalTime !== keyframeTime && this.cameraOperator.dragControls) {
+          this.cameraOperator.dragControls.dispose()
+          this.cameraOperator.dragControls = null
+        }
+      } else if (!this.cameraOperator.dragControls) {
         this.cameraOperator.initDragControls(this.projections)
       }
     } else {
