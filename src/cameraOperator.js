@@ -251,7 +251,7 @@ export default class CameraOperator extends EventDispatcher {
   }
 
   createFocusMarker() {
-    const geom = new SphereGeometry(3, 16, 16)
+    const geom = new SphereGeometry(1, 16, 16)
     const mat = new MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 1.0 })
     this.focusMarker = new Mesh(geom, mat)
     this.focusMarker.name = 'FocusMarker'
