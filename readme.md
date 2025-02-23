@@ -1,6 +1,6 @@
-# Vantage Renderer
+# Vantage-renderer
 
-Vantage Renderer is an open-source 3D projection renderer built with Three.js.  It provides a modular framework for projecting media (images and videos) onto 3D environments using custom web components. Designed for fact-checkers, investigative journalists, and OSINT practitioners.
+Vantage-renderer is an open-source 3D projection renderer built with Three.js.  It provides a modular framework for projecting media (images and videos) onto 3D environments using custom web components. Designed for fact-checkers, investigative journalists, and OSINT practitioners.
 
 
 ## Features
@@ -33,7 +33,7 @@ Include the custom elements in your HTML:
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Vantage Renderer Example</title>
+  <title>vantage-renderer Example</title>
   <script type="module" src="src/main.js"></script>
 </head>
 <body>
