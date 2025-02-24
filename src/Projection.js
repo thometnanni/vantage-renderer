@@ -304,7 +304,9 @@ export default class Projection {
     const effectiveTime = globalTime - offset
     const keyframeEls = Array.from(this.element.querySelectorAll('vantage-keyframe'))
 
-    const validKeyframes = keyframeEls.filter((kf) => parseFloat(kf.getAttribute('time')) <= effectiveTime)
+    const validKeyframes = keyframeEls.filter(
+      (kf) => parseFloat(kf.getAttribute('time')) <= effectiveTime
+    )
     if (validKeyframes.length === 0) return keyframeEls[0]
     return validKeyframes.reduce((prev, curr) =>
       parseFloat(curr.getAttribute('time')) > parseFloat(prev.getAttribute('time')) ? curr : prev
@@ -391,6 +393,26 @@ export default class Projection {
   }
 
   updateCameraFromKeyframe = (data) => {
+    if (this.projectionType === 'map') {
+      let pos, rot
+      if (!data.position || data.position.trim() === '' || data.position.trim() === '0 0 0') {
+        pos = [0, 500, 0]
+      } else {
+        pos = data.position.split(' ').map(Number)
+      }
+
+      if (!data.rotation || data.rotation.trim() === '' || data.rotation.trim() === '0 0 0') {
+        rot = [-Math.PI / 2, -Math.PI / 2, 0]
+      } else {
+        rot = data.rotation.split(' ').map(Number)
+      }
+
+      this.camera.position.set(...pos)
+      this.camera.rotation.set(...rot)
+      this.camera.updateProjectionMatrix()
+      return
+    }
+
     const pos = data.position.split(' ').map(Number)
     const rot = data.rotation.split(' ').map(Number)
     const fov = parseFloat(data.fov)
