@@ -36,7 +36,7 @@
             rotation="0.09000000000000065 -0.6939999999999961 -2.786836633470502e-17"
             fov="44.4"
             far="30"
-            time="1.0"
+            time="0.0"
             screen="true"
           ></vantage-keyframe>
           <vantage-keyframe
@@ -49,7 +49,7 @@
           ></vantage-keyframe>
         </vantage-projection>
 
-        <vantage-projection id="projection-3" src="./media/IMG_3271.jpeg" time="2.0">
+        <vantage-projection id="projection-3" src="./media/IMG_3271.jpeg" time="0.0">
           <vantage-keyframe
             position="38.89105577493452 1.596007992385184 15.467554987397904"
             rotation="0.023999999999999657 -1.5800000000000094 2.602834794405102e-17"
@@ -151,7 +151,7 @@
           type="range"
           step="0.04"
           min="0"
-          max="12"
+          max="10"
           oninput="updateTime(event)"
           value="0"
         />
@@ -166,7 +166,7 @@
 
     <script type="module" src="/src/main.js"></script>
     <script>
-      const maxTime = 15
+      const maxTime = 10
       let isPlaying = false
       let lastTimestamp = 0
 
@@ -199,6 +199,12 @@
       }
 
       document.addEventListener('DOMContentLoaded', () => {
+        isPlaying = true
+        if (isPlaying) {
+          lastTimestamp = 0
+          requestAnimationFrame(playLoop)
+        }
+
         const selector = document.getElementById('projectionSelector')
         document.querySelectorAll('vantage-keyframe').forEach((kf) => {
           observeKeyframe(kf)
@@ -518,6 +524,7 @@
       box-shadow: inset 0 0 2px;
       padding: 5px;
       border-radius: 4px;
+      display: none;
     }
 
     .info {
