@@ -71,6 +71,7 @@ export default class Projection {
     this.attributes = attributes
 
     // this.updateLayerMeshes()
+    this.offset = parseFloat(element.getAttribute('time')) || 0
 
     this.index = index
     this.projectionType = projectionType
@@ -299,11 +300,12 @@ export default class Projection {
   }
 
   selectActiveKeyframe(globalTime) {
+    const offset = parseFloat(this.element.getAttribute('time')) || 0
+    const effectiveTime = globalTime - offset
     const keyframeEls = Array.from(this.element.querySelectorAll('vantage-keyframe'))
-    const validKeyframes = keyframeEls.filter(
-      (kf) => parseFloat(kf.getAttribute('time')) <= globalTime
-    )
-    if (validKeyframes.length === 0) return null
+
+    const validKeyframes = keyframeEls.filter((kf) => parseFloat(kf.getAttribute('time')) <= effectiveTime)
+    if (validKeyframes.length === 0) return keyframeEls[0]
     return validKeyframes.reduce((prev, curr) =>
       parseFloat(curr.getAttribute('time')) > parseFloat(prev.getAttribute('time')) ? curr : prev
     )
@@ -327,16 +329,21 @@ export default class Projection {
   }
 
   getInterpolatedKeyframe = (globalTime) => {
+    const offset = parseFloat(this.element.getAttribute('time')) || 0
+    let effectiveTime = globalTime - offset
     const keyframeEls = Array.from(this.element.querySelectorAll('vantage-keyframe'))
-    if (keyframeEls.length === 0) return null
     const sorted = keyframeEls.sort(
       (a, b) => parseFloat(a.getAttribute('time')) - parseFloat(b.getAttribute('time'))
     )
+
+    const firstKeyTime = parseFloat(sorted[0].getAttribute('time')) || 0
+    if (effectiveTime < firstKeyTime) effectiveTime = firstKeyTime
+
     let active = null,
       next = null
     for (let i = 0; i < sorted.length; i++) {
-      const t = parseFloat(sorted[i].getAttribute('time'))
-      if (t <= globalTime) {
+      const t = parseFloat(sorted[i].getAttribute('time')) || 0
+      if (t <= effectiveTime) {
         active = sorted[i]
       } else {
         next = sorted[i]
@@ -353,9 +360,9 @@ export default class Projection {
         opacity: active.getAttribute('opacity')
       }
     }
-    const activeTime = parseFloat(active.getAttribute('time'))
-    const nextTime = parseFloat(next.getAttribute('time'))
-    const ratio = (globalTime - activeTime) / (nextTime - activeTime)
+    const activeTime = parseFloat(active.getAttribute('time')) || 0
+    const nextTime = parseFloat(next.getAttribute('time')) || 0
+    const ratio = (effectiveTime - activeTime) / (nextTime - activeTime)
     const lerp = (a, b, t) => a + (b - a) * t
     const lerpArray = (strA, strB) => {
       const aArr = (strA || '0 0 0').split(' ').map(Number)
@@ -404,6 +411,11 @@ export default class Projection {
     if (!this.ready || this.scene.getObjectByName('vantage:base') == null) return
     const rendererEl = this.element.closest('vantage-renderer')
     const globalTime = rendererEl ? parseFloat(rendererEl.getAttribute('time')) : 0
+    const offset = parseFloat(this.element.getAttribute('time')) || 0
+    if (globalTime < offset) {
+      this.hideProjection()
+      return
+    }
     const keyframeData = this.getInterpolatedKeyframe(globalTime)
     if (!keyframeData) {
       this.hideProjection()
@@ -430,9 +442,9 @@ export default class Projection {
     if (!videoEl.duration || videoEl.readyState < 2) return
     videoEl.pause()
 
-    const offset = parseFloat(keyframeObj.getAttribute('time')) || 0
-
+    const offset = parseFloat(this.element.getAttribute('time')) || 0
     let videoTime = globalTime - offset
+    if (videoTime < 0) videoTime = 0
     videoEl.currentTime = videoTime
   }
 

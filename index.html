@@ -16,7 +16,12 @@
         style="pointer-events: auto"
         time="0"
       >
-        <vantage-projection id="projection-1" src="./media/aerial.jpg" projection-type="map">
+        <vantage-projection
+          id="projection-1"
+          src="./media/aerial.jpg"
+          projection-type="map"
+          time="0"
+        >
           <vantage-keyframe
             position="0 500 0"
             rotation="-1.5708 -1.5708 0"
@@ -29,13 +34,14 @@
           src="https://media.thometnanni.net/long-story.mp4"
           layers="Buildings Ground"
           focus
+          time="0.0"
         >
           <vantage-keyframe
             position="-21.000150790288302 0.9300571526624671 32.01275514342212"
             rotation="0.09000000000000065 -0.6939999999999961 -2.786836633470502e-17"
-            fov="44.40000000000003"
+            fov="44.4"
             far="30"
-            time="0.0"
+            time="1.0"
             screen="true"
           ></vantage-keyframe>
           <vantage-keyframe
@@ -47,7 +53,8 @@
             screen="true"
           ></vantage-keyframe>
         </vantage-projection>
-        <vantage-projection id="projection-3" src="./media/IMG_3271.jpeg">
+        
+        <vantage-projection id="projection-3" src="./media/IMG_3271.jpeg" time="2.0">
           <vantage-keyframe
             position="38.89105577493452 1.596007992385184 15.467554987397904"
             rotation="0.023999999999999657 -1.5800000000000094 2.602834794405102e-17"
@@ -56,10 +63,10 @@
             layers="Buildings Ground"
             screen="true"
             opacity=".8"
-            time="2.0"
+            time="0.0"
           ></vantage-keyframe>
         </vantage-projection>
-        <vantage-projection id="projection-4" src="./media/prinz-1.jpg">
+        <vantage-projection id="projection-4" src="./media/prinz-1.jpg" time="3.0">
           <vantage-keyframe
             position="332.7978567718118 1.4705038647204838 -74.16062977140834"
             rotation="0.1419999999999997 1.1220000000000068 6.16831112026121e-16"
@@ -67,10 +74,10 @@
             far="66"
             layers="Buildings Ground"
             screen="true"
-            time="3.0"
+            time="0.0"
           ></vantage-keyframe>
         </vantage-projection>
-        <vantage-projection id="projection-5" src="./media/prinz-2.jpg">
+        <vantage-projection id="projection-5" src="./media/prinz-2.jpg" time="4.0">
           <vantage-keyframe
             position="300.3924330507958 1 -61.9849352551449"
             rotation="0.018000000000001147 -0.3719999999999884 1.1034628868824297e-15"
@@ -78,10 +85,10 @@
             far="85"
             layers="Buildings Ground"
             screen="true"
-            time="4.0"
+            time="0.0"
           ></vantage-keyframe>
         </vantage-projection>
-        <vantage-projection id="projection-6" src="./media/warthe-eck.jpg">
+        <vantage-projection id="projection-6" src="./media/warthe-eck.jpg" time="5.0">
           <vantage-keyframe
             position="133.29314431075227 4.324259787050994 -38.42700744166996"
             rotation="-0.020000000000008112 -2.0780000000000403 5.703176662847664e-15"
@@ -89,7 +96,7 @@
             far="78"
             layers="Buildings Ground"
             screen="true"
-            time="5.0"
+            time="0.0"
           ></vantage-keyframe>
         </vantage-projection>
       </vantage-renderer>
@@ -533,7 +540,7 @@
       margin-top: 10px;
       display: block;
     }
-    
+
     input[type='number'] {
       max-width: 40px;
       display: inline;

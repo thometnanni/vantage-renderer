@@ -423,6 +423,7 @@ class VantageProjection extends HTMLElement {
     this.projectionId = null
     this.rendererTime = null
     this.keyframes = {}
+    this.offset = 0
   }
   static observedAttributes = [
     'src',
@@ -436,14 +437,19 @@ class VantageProjection extends HTMLElement {
     'bounds',
     'focus',
     'opacity',
-    'pass-through'
+    'pass-through',
+    'time'
   ]
+
   async attributeChangedCallback(name, oldValue, value) {
     if (this.projectionId == null) return
     if (name === 'projection-type') {
       this.destroy()
       this.create()
       return
+    }
+    if (name === 'time') {
+      this.offset = parseFloat(value) || 0
     }
     this.dispatchEvent(
       new CustomEvent('vantage:update-projection', {
@@ -462,7 +468,8 @@ class VantageProjection extends HTMLElement {
     this.projectionId = this.id || crypto.randomUUID().split('-')[0]
     this.vantageRenderer = this.parentElement
     this.rendererTime = parseAttribute('time', this.parentElement.getAttribute('time') ?? 0)
-
+    this.offset = parseFloat(this.getAttribute('time')) || 0
+    
     this.addEventListener('vantage:add-keyframe', (e) => this.addKeyframe(e.detail))
     this.addEventListener('vantage:update-keyframe', (e) => this.updateKeyframe(e.detail))
     this.addEventListener('vantage:remove-keyframe', (e) => this.removeKeyframe(e.detail))
@@ -494,9 +501,7 @@ class VantageProjection extends HTMLElement {
   destroy() {
     const event = new CustomEvent('vantage:remove-projection', {
       bubbles: true,
-      detail: {
-        id: this.projectionId
-      }
+      detail: { id: this.projectionId }
     })
     this.vantageRenderer.dispatchEvent(event)
   }
@@ -517,18 +522,10 @@ class VantageProjection extends HTMLElement {
   }
 
   removeKeyframe({ id }) {
-    delete this.projections[id]
+    delete this.keyframes[id]
     this.update()
   }
 
-  selectActiveKeyframe(globalTime) {
-    const keyframes = Array.from(this.querySelectorAll('vantage-keyframe'))
-    const valid = keyframes.filter((kf) => parseFloat(kf.getAttribute('time')) <= globalTime)
-    if (valid.length === 0) return null
-    return valid.reduce((prev, curr) =>
-      parseFloat(curr.getAttribute('time')) > parseFloat(prev.getAttribute('time')) ? curr : prev
-    )
-  }
 
   updateActiveKeyframeFromTransform() {
     const activeKeyframe = this.querySelector('vantage-keyframe')
