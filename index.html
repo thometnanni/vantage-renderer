@@ -203,6 +203,7 @@
         if (isPlaying) {
           lastTimestamp = 0
           requestAnimationFrame(playLoop)
+          document.getElementById('playButton').textContent = isPlaying ? 'Pause' : 'Play'
         }
 
         const selector = document.getElementById('projectionSelector')
