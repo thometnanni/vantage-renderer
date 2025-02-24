@@ -22,8 +22,9 @@ async function loadTexture(url) {
       el.playsInline = true
       el.muted = true
       el.loop = false
+      el.play()
       el.addEventListener(
-        'loadedmetadata',
+        'playing',
         () => {
           el.pause()
           resolve(el)

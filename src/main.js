@@ -465,11 +465,11 @@ class VantageProjection extends HTMLElement {
   }
 
   async connectedCallback() {
-    this.projectionId = this.id || crypto.randomUUID().split('-')[0]
+    this.projectionId = this.id || crypto?.randomUUID?.().split('-')[0] || `k-${Math.random()}`
     this.vantageRenderer = this.parentElement
     this.rendererTime = parseAttribute('time', this.parentElement.getAttribute('time') ?? 0)
     this.offset = parseFloat(this.getAttribute('time')) || 0
-    
+
     this.addEventListener('vantage:add-keyframe', (e) => this.addKeyframe(e.detail))
     this.addEventListener('vantage:update-keyframe', (e) => this.updateKeyframe(e.detail))
     this.addEventListener('vantage:remove-keyframe', (e) => this.removeKeyframe(e.detail))
@@ -525,7 +525,6 @@ class VantageProjection extends HTMLElement {
     delete this.keyframes[id]
     this.update()
   }
-
 
   updateActiveKeyframeFromTransform() {
     const activeKeyframe = this.querySelector('vantage-keyframe')
@@ -589,7 +588,7 @@ class VantageKeyframe extends HTMLElement {
   }
 
   async connectedCallback() {
-    this.keyframeId = this.id || crypto.randomUUID().split('-')[0]
+    this.keyframeId = this.id || crypto?.randomUUID?.().split('-')[0] || `k-${Math.random()}`
     this.vantageProjection = this.parentElement
     this.create()
   }
