@@ -131,6 +131,40 @@ class VantageRenderer extends HTMLElement {
       controls: parseAttribute('controls', this.attributes['controls']?.value)
     })
 
+    this.cameraOperator.addEventListener('vantage:update-focus-camera', ({ value }) => {
+      if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
+      const focusedProjection = Array.from(document.querySelectorAll('vantage-projection')).find(
+        (p) => p.hasAttribute('focus') && p.getAttribute('focus') !== 'false'
+      )
+      if (!focusedProjection) return
+      const keyframe = getSelectedKeyframe(focusedProjection)
+      if (!keyframe) return
+      keyframe.setAttribute('rotation', value.join(' '))
+      keyframe.dispatchEvent(
+        new CustomEvent('vantage:set-rotation', {
+          bubbles: true,
+          detail: { rotation: value }
+        })
+      )
+    })
+
+    this.cameraOperator.addEventListener('vantage:update-fov', ({ value }) => {
+      if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
+      const focusedProjection = Array.from(document.querySelectorAll('vantage-projection')).find(
+        (p) => p.hasAttribute('focus') && p.getAttribute('focus') !== 'false'
+      )
+      if (!focusedProjection) return
+      const keyframe = getSelectedKeyframe(focusedProjection)
+      if (!keyframe) return
+      keyframe.setAttribute('fov', value)
+      keyframe.dispatchEvent(
+        new CustomEvent('vantage:set-fov', {
+          bubbles: true,
+          detail: { rotation: value }
+        })
+      )
+    })
+
     this.cameraOperator.addEventListener('vantage:unlock-first-person', () => {
       this.setAttribute('first-person', 'false')
       this.dispatchEvent(
@@ -299,8 +333,7 @@ class VantageRenderer extends HTMLElement {
     if (!keyframe) return
 
     keyframe.setAttribute('rotation', newRotation.join(' '))
-
-    projection.element.dispatchEvent(
+    keyframe.dispatchEvent(
       new CustomEvent('vantage:set-rotation', {
         bubbles: true,
         detail: { rotation: newRotation }
@@ -566,25 +599,7 @@ class VantageKeyframe extends HTMLElement {
       })
     )
 
-    if (name === 'fov') {
-      const fovValue = parseFloat(value)
-      this.dispatchEvent(
-        new CustomEvent('vantage:update-fov', {
-          bubbles: true,
-          detail: { fov: fovValue }
-        })
-      )
-    }
-
-    if (name === 'rotation') {
-      const rotationArray = value.split(' ').map(Number)
-      this.dispatchEvent(
-        new CustomEvent('vantage:update-focus-camera', {
-          bubbles: true,
-          detail: { rotation: rotationArray }
-        })
-      )
-    }
+    
   }
 
   async connectedCallback() {

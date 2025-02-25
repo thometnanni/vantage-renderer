@@ -156,7 +156,7 @@ export default class CameraOperator extends EventDispatcher {
   keydown = ({ code }) => {
     if (!this.controls) return
     // if (this.mapControls.enabled) return;
-    if (this.firstPerson && !this.fpControls.enabled) return;
+    if (this.firstPerson && !this.fpControls.enabled) return
 
     switch (code) {
       case 'KeyF':
@@ -256,7 +256,7 @@ export default class CameraOperator extends EventDispatcher {
     const mat = new MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 1.0 })
     this.focusMarker = new Mesh(geom, mat)
     this.focusMarker.name = 'FocusMarker'
-    this.focusMarker.layers.set(2);
+    this.focusMarker.layers.set(2)
     this.scene.add(this.focusMarker)
     this.focusMarker.visible = false
   }
@@ -337,14 +337,14 @@ export default class CameraOperator extends EventDispatcher {
           `${intersection.x} ${intersection.y} ${intersection.z}`
         )
 
-        focusProjection.element.dispatchEvent(
+        activeKeyframe.dispatchEvent(
           new CustomEvent('vantage:set-position', {
             bubbles: true,
             detail: { position: [...intersection] }
           })
         )
       }
-      
+
     })
   }
 }
