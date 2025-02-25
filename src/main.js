@@ -160,7 +160,7 @@ class VantageRenderer extends HTMLElement {
       keyframe.dispatchEvent(
         new CustomEvent('vantage:set-fov', {
           bubbles: true,
-          detail: { rotation: value }
+          detail: { fov: value }
         })
       )
     })
