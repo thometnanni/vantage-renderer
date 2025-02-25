@@ -28,7 +28,6 @@
           id="projection-2"
           src="https://media.thometnanni.net/long-story.mp4"
           layers="Buildings Ground"
-          focus
           time="0.0"
         >
           <vantage-keyframe
@@ -48,7 +47,6 @@
             screen="true"
           ></vantage-keyframe>
         </vantage-projection>
-
         <vantage-projection id="projection-3" src="./media/IMG_3271.jpeg" time="0.0">
           <vantage-keyframe
             position="38.89105577493452 1.596007992385184 15.467554987397904"
@@ -97,175 +95,29 @@
       </vantage-renderer>
     </section>
 
-    <div class="controls">
-      <div>
-        <h3>Media</h3>
-        <select id="projectionSelector">
-          <option value="projection-2">Camera 2</option>
-          <option value="projection-3">Camera 3</option>
-          <option value="projection-4">Camera 4</option>
-          <option value="projection-5">Camera 5</option>
-          <option value="projection-6">Camera 6</option>
-          <option value="projection-1">Camera 1 (Map)</option>
-        </select>
-      </div>
-      <div>
-        <h3>Keyframe</h3>
-        <select id="keyframeSelector"></select>
-      </div>
-      <div>
-        <h3>Camera Positioning</h3>
-        <label>X: <input id="posX" type="number" step="1" /></label>
-        <label>Y: <input id="posY" type="number" step="1" /></label>
-        <label>Z: <input id="posZ" type="number" step="1" /></label>
-      </div>
-      <div>
-        <h4>Rotation</h4>
-        <label>X: <input id="rotX" type="number" step="0.1" /></label>
-        <label>Y: <input id="rotY" type="number" step="0.1" /></label>
-        <label>Z: <input id="rotZ" type="number" step="0.1" /></label>
-      </div>
-      <div>
-        <h4>Depth</h4>
-        <label>Far: <input id="far" type="number" step="1" /></label>
-        <label>Field of View: <input id="fov" type="number" step="1" /></label>
-      </div>
-      <div>
-        <h4>Keyframe Time</h4>
-        <label>Time: <input id="keyframeTime" type="number" step="0.1" /></label>
-      </div>
-      <div>
-        <h4>Project on:</h4>
-        <label><input type="checkbox" id="layerBuildings" />Buildings</label>
-        <label><input type="checkbox" id="layerGround" />Ground</label>
-        <label><input type="checkbox" id="layerPlane" />Plane</label>
-      </div>
-      <div>
-        <label>Opacity: <input id="opacity" type="number" min="0" max="1" step="0.1" /></label>
-      </div>
-      <button onclick="toggleFirstPerson()">Toggle First Person</button>
-      <div>
-        <h4>Time</h4>
-        <input
-          id="time"
-          type="range"
-          step="0.04"
-          min="0"
-          max="10"
-          oninput="updateTime(event)"
-          value="0"
-        />
-        <button id="playButton">Play</button>
-      </div>
+    <div class="timeline">
+      <button id="playButton">Play</button>
+
+      <input
+        id="time"
+        type="range"
+        step="0.04"
+        min="0"
+        max="10"
+        oninput="updateTime(event)"
+        value="0"
+      />
     </div>
     <div class="info">
       ©️
       <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
       contributors
     </div>
-
     <script type="module" src="/src/main.js"></script>
     <script>
       const maxTime = 10
       let isPlaying = false
       let lastTimestamp = 0
-
-      function updateKeyframeControls(keyframe) {
-        const pos = (keyframe.getAttribute('position') || '0 0 0').split(' ')
-        document.getElementById('posX').value = pos[0]
-        document.getElementById('posY').value = pos[1]
-        document.getElementById('posZ').value = pos[2]
-
-        const rot = (keyframe.getAttribute('rotation') || '0 0 0').split(' ')
-        document.getElementById('rotX').value = parseFloat(rot[0]).toFixed(2)
-        document.getElementById('rotY').value = parseFloat(rot[1]).toFixed(2)
-        document.getElementById('rotZ').value = parseFloat(rot[2]).toFixed(2)
-
-        document.getElementById('fov').value = keyframe.getAttribute('fov') || ''
-        document.getElementById('far').value = keyframe.getAttribute('far') || ''
-        document.getElementById('opacity').value = keyframe.getAttribute('opacity') || '1'
-        document.getElementById('keyframeTime').value = keyframe.getAttribute('time') || '0'
-      }
-
-      function observeKeyframe(keyframe) {
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-            if (mutation.type === 'attributes') {
-              updateKeyframeControls(keyframe)
-            }
-          })
-        })
-        observer.observe(keyframe, { attributes: true })
-      }
-
-      document.addEventListener('DOMContentLoaded', () => {
-        isPlaying = true
-        if (isPlaying) {
-          lastTimestamp = 0
-          requestAnimationFrame(playLoop)
-          document.getElementById('playButton').textContent = isPlaying ? 'Pause' : 'Play'
-        }
-
-        const selector = document.getElementById('projectionSelector')
-        document.querySelectorAll('vantage-keyframe').forEach((kf) => {
-          observeKeyframe(kf)
-          updateKeyframeControls(kf)
-        })
-
-        document.querySelector('.controls').addEventListener('input', (e) => {
-          if (e.target.matches('input[type="number"], input[type="checkbox"]')) {
-            const proj = document.getElementById(selector.value)
-            const keyframe = getSelectedKeyframe(proj)
-            if (!keyframe) return
-            const posX = parseFloat(document.getElementById('posX').value) || 0
-            const posY = parseFloat(document.getElementById('posY').value) || 0
-            const posZ = parseFloat(document.getElementById('posZ').value) || 0
-            keyframe.setAttribute('position', `${posX} ${posY} ${posZ}`)
-
-            const rotX = parseFloat(document.getElementById('rotX').value) || 0
-            const rotY = parseFloat(document.getElementById('rotY').value) || 0
-            const rotZ = parseFloat(document.getElementById('rotZ').value) || 0
-            keyframe.setAttribute('rotation', `${rotX} ${rotY} ${rotZ}`)
-
-            const fov = document.getElementById('fov').value
-            if (fov !== '') {
-              keyframe.setAttribute('fov', parseFloat(fov))
-            } else {
-              keyframe.removeAttribute('fov')
-            }
-            const far = document.getElementById('far').value
-            if (far !== '') {
-              keyframe.setAttribute('far', parseFloat(far))
-            } else {
-              keyframe.removeAttribute('far')
-            }
-            const opacity = document.getElementById('opacity').value
-            if (opacity !== '') {
-              keyframe.setAttribute('opacity', parseFloat(opacity))
-            } else {
-              keyframe.removeAttribute('opacity')
-            }
-            const buildings = document.getElementById('layerBuildings').checked
-            const ground = document.getElementById('layerGround').checked
-            const screen = document.getElementById('layerPlane').checked
-            const newLayers = []
-            if (buildings) newLayers.push('Buildings')
-            if (ground) newLayers.push('Ground')
-            if (newLayers.length) {
-              keyframe.setAttribute('layers', newLayers.join(' '))
-            } else {
-              keyframe.removeAttribute('layers')
-            }
-            keyframe.setAttribute('screen', screen ? true : false)
-            const keyTime = document.getElementById('keyframeTime').value
-            keyframe.setAttribute('time', parseFloat(keyTime))
-            document.querySelector('vantage-renderer').setAttribute('time', keyTime)
-          }
-        })
-
-        selector.addEventListener('change', () => selectProjection(selector.value))
-        selectProjection(selector.value)
-      })
 
       function playLoop(timestamp) {
         if (!lastTimestamp) lastTimestamp = timestamp
@@ -278,216 +130,29 @@
           if (currentTime > maxTime) currentTime = 0
           rendererEl.setAttribute('time', currentTime)
           document.getElementById('time').value = currentTime
-          const proj = document.getElementById(document.getElementById('projectionSelector').value)
-          populateKeyframeSelector(proj)
-          loadProjectionValues(proj)
         }
         requestAnimationFrame(playLoop)
-      }
-
-      document.getElementById('playButton').addEventListener('click', () => {
-        isPlaying = !isPlaying
-        document.getElementById('playButton').textContent = isPlaying ? 'Pause' : 'Play'
-
-        document.getElementById('keyframeSelector').disabled = isPlaying
-        if (isPlaying) {
-          lastTimestamp = 0
-          requestAnimationFrame(playLoop)
-        }
-      })
-
-      document.getElementById('keyframeSelector').addEventListener('change', () => {
-        const proj = document.getElementById(document.getElementById('projectionSelector').value)
-        const keyframes = Array.from(proj.querySelectorAll('vantage-keyframe'))
-        const index = parseInt(document.getElementById('keyframeSelector').value, 10)
-        if (!isNaN(index) && keyframes[index]) {
-          const keyTime = keyframes[index].getAttribute('time')
-          document.querySelector('vantage-renderer').setAttribute('time', keyTime)
-          document.getElementById('time').value = keyTime
-        }
-        loadProjectionValues(proj)
-      })
-
-      function getActiveKeyframe(projection) {
-        const globalTime =
-          parseFloat(document.querySelector('vantage-renderer').getAttribute('time')) || 0
-        const keyframes = Array.from(projection.querySelectorAll('vantage-keyframe'))
-        let active = keyframes[0]
-        keyframes.forEach((kf) => {
-          const t = parseFloat(kf.getAttribute('time')) || 0
-          if (Math.abs(t - globalTime) < 0.0001) {
-            active = kf
-          } else if (t <= globalTime && t > (parseFloat(active.getAttribute('time')) || 0)) {
-            active = kf
-          }
-        })
-        return active
-      }
-
-      function getSelectedKeyframe(projection) {
-        const keyframes = Array.from(projection.querySelectorAll('vantage-keyframe'))
-        const keyframeSelector = document.getElementById('keyframeSelector')
-        if (keyframeSelector && keyframeSelector.options.length > 0) {
-          const index = parseInt(keyframeSelector.value, 10)
-          if (!isNaN(index) && keyframes[index]) return keyframes[index]
-        }
-        return getActiveKeyframe(projection)
-      }
-
-      function populateKeyframeSelector(projection) {
-        const keyframeSelector = document.getElementById('keyframeSelector')
-        keyframeSelector.innerHTML = ''
-        const keyframes = Array.from(projection.querySelectorAll('vantage-keyframe'))
-        keyframes.forEach((kf, index) => {
-          const option = document.createElement('option')
-          option.value = index
-          option.text = 'Keyframe ' + (index + 1)
-          keyframeSelector.appendChild(option)
-        })
-      }
-
-      function loadProjectionValues(projection) {
-        const keyframe = getSelectedKeyframe(projection)
-        if (!keyframe) return
-        const pos = (keyframe.getAttribute('position') || '0 0 0').split(' ')
-        document.getElementById('posX').value = pos[0]
-        document.getElementById('posY').value = pos[1]
-        document.getElementById('posZ').value = pos[2]
-
-        const rot = (keyframe.getAttribute('rotation') || '0 0 0').split(' ')
-        document.getElementById('rotX').value = rot[0]
-        document.getElementById('rotY').value = rot[1]
-        document.getElementById('rotZ').value = rot[2]
-
-        document.getElementById('fov').value = keyframe.getAttribute('fov') || ''
-        document.getElementById('far').value = keyframe.getAttribute('far') || ''
-        document.getElementById('opacity').value = keyframe.getAttribute('opacity') || '1'
-        document.getElementById('keyframeTime').value = keyframe.getAttribute('time') || '0'
-        const layers = keyframe.getAttribute('layers') || ''
-        document.getElementById('layerBuildings').checked = layers.includes('Buildings')
-        document.getElementById('layerGround').checked = layers.includes('Ground')
-        document.getElementById('layerPlane').checked = keyframe.getAttribute('screen') === 'true'
-      }
-
-      document.addEventListener('DOMContentLoaded', () => {
-        const selector = document.getElementById('projectionSelector')
-        document.querySelectorAll('vantage-projection').forEach((proj) => {
-          observeProjection(proj)
-        })
-        selector.addEventListener('change', () => selectProjection(selector.value))
-        selectProjection(selector.value)
-
-        document.querySelector('.controls').addEventListener('input', (e) => {
-          if (e.target.matches('input[type="number"], input[type="checkbox"]')) {
-            const proj = document.getElementById(selector.value)
-            const keyframe = getSelectedKeyframe(proj)
-            if (!keyframe) return
-            const posX = parseFloat(document.getElementById('posX').value) || 0
-            const posY = parseFloat(document.getElementById('posY').value) || 0
-            const posZ = parseFloat(document.getElementById('posZ').value) || 0
-            keyframe.setAttribute('position', `${posX} ${posY} ${posZ}`)
-            const rotX = parseFloat(document.getElementById('rotX').value) || 0
-            const rotY = parseFloat(document.getElementById('rotY').value) || 0
-            const rotZ = parseFloat(document.getElementById('rotZ').value) || 0
-            keyframe.setAttribute('rotation', `${rotX} ${rotY} ${rotZ}`)
-            const fov = document.getElementById('fov').value
-            if (fov !== '') {
-              keyframe.setAttribute('fov', parseFloat(fov))
-            } else {
-              keyframe.removeAttribute('fov')
-            }
-            const far = document.getElementById('far').value
-            if (far !== '') {
-              keyframe.setAttribute('far', parseFloat(far))
-            } else {
-              keyframe.removeAttribute('far')
-            }
-            const opacity = document.getElementById('opacity').value
-            if (opacity !== '') {
-              keyframe.setAttribute('opacity', parseFloat(opacity))
-            } else {
-              keyframe.removeAttribute('opacity')
-            }
-            const buildings = document.getElementById('layerBuildings').checked
-            const ground = document.getElementById('layerGround').checked
-            const screen = document.getElementById('layerPlane').checked
-            const newLayers = []
-            if (buildings) newLayers.push('Buildings')
-            if (ground) newLayers.push('Ground')
-            if (newLayers.length) {
-              keyframe.setAttribute('layers', newLayers.join(' '))
-            } else {
-              keyframe.removeAttribute('layers')
-            }
-            keyframe.setAttribute('screen', screen ? true : false)
-            const keyTime = document.getElementById('keyframeTime').value
-            keyframe.setAttribute('time', parseFloat(keyTime))
-            document.querySelector('vantage-renderer').setAttribute('time', keyTime)
-          }
-        })
-        document.getElementById('keyframeSelector').addEventListener('change', () => {
-          const proj = document.getElementById(selector.value)
-          const keyframes = Array.from(proj.querySelectorAll('vantage-keyframe'))
-          const index = parseInt(document.getElementById('keyframeSelector').value, 10)
-          if (!isNaN(index) && keyframes[index]) {
-            const keyTime = keyframes[index].getAttribute('time')
-            document.querySelector('vantage-renderer').setAttribute('time', keyTime)
-          }
-          loadProjectionValues(proj)
-        })
-      })
-
-      function toggleFirstPerson() {
-        const renderer = document.querySelector('vantage-renderer')
-        const current = renderer.getAttribute('first-person')
-        renderer.setAttribute('first-person', current === 'true' ? 'false' : 'true')
       }
 
       function updateTime(e) {
         const newTime = parseFloat(e.target.value)
         document.querySelector('vantage-renderer').setAttribute('time', newTime)
-        const proj = document.getElementById(document.getElementById('projectionSelector').value)
-        populateKeyframeSelector(proj)
-        loadProjectionValues(proj)
-      }
-
-      function selectProjection(id) {
-        document.querySelectorAll('vantage-projection').forEach((p) => p.removeAttribute('focus'))
-        const projection = document.getElementById(id)
-        projection.setAttribute('focus', '')
-        populateKeyframeSelector(projection)
-        loadProjectionValues(projection)
-      }
-
-      function observeProjection(projection) {
-        if (projection._observerAttached) return
-        projection._observerAttached = true
-        const observer = new MutationObserver((mutations) => {
-          let updateSelector = false
-          mutations.forEach((mutation) => {
-            if (mutation.attributeName === 'focus') {
-              updateSelector = true
-            }
-          })
-          if (
-            updateSelector &&
-            projection.hasAttribute('focus') &&
-            projection.getAttribute('focus') !== 'false'
-          ) {
-            document.getElementById('projectionSelector').value = projection.id
-          }
-          loadProjectionValues(projection)
-        })
-        observer.observe(projection, { attributes: true, attributeFilter: ['focus'] })
       }
 
       document.addEventListener('DOMContentLoaded', () => {
-        const selector = document.getElementById('projectionSelector')
-        document.querySelectorAll('vantage-projection').forEach((proj) => {
-          observeProjection(proj)
+        isPlaying = true
+        lastTimestamp = 0
+        requestAnimationFrame(playLoop)
+        document.getElementById('playButton').textContent = 'Pause'
+
+        document.getElementById('playButton').addEventListener('click', () => {
+          isPlaying = !isPlaying
+          document.getElementById('playButton').textContent = isPlaying ? 'Pause' : 'Play'
+          if (isPlaying) {
+            lastTimestamp = 0
+            requestAnimationFrame(playLoop)
+          }
         })
-        selector.addEventListener('change', () => selectProjection(selector.value))
-        selectProjection(selector.value)
       })
     </script>
   </body>
@@ -497,35 +162,27 @@
       margin: 0;
       padding: 0;
       font-family: sans-serif;
-      font-size: 11px;
-      text-rendering: optimizeLegibility;
+      height: 100%;
     }
-
     section {
       width: 100vw;
       height: 100vh;
     }
-
-    h1,
-    h3,
-    h4 {
-      margin: 5px 0;
-      padding: 0;
-    }
-
-    .controls div {
-      margin: 0 0 20px 0;
-    }
-
-    .controls {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: #f5f5f5;
-      box-shadow: inset 0 0 2px;
-      padding: 5px;
+    .timeline {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgb(245, 245, 245);
+      padding: 10px 15px;
       border-radius: 4px;
-      /* display: none; */
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .timeline input[type='range'] {
+      width: 300px;
     }
 
     .info {
@@ -535,18 +192,6 @@
       background-color: white;
       padding: 2px;
       font-size: 12px;
-      opacity: 0.7;
-    }
-
-    button,
-    select {
-      margin-top: 10px;
-      display: block;
-    }
-
-    input[type='number'] {
-      max-width: 40px;
-      display: inline;
     }
   </style>
 </html>
