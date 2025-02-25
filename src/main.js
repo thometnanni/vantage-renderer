@@ -521,6 +521,15 @@ class VantageProjection extends HTMLElement {
     this.update()
   }
 
+  selectActiveKeyframe(globalTime) {
+    const keyframes = Array.from(this.querySelectorAll('vantage-keyframe'))
+    const valid = keyframes.filter((kf) => parseFloat(kf.getAttribute('time')) <= globalTime)
+    if (valid.length === 0) return null
+    return valid.reduce((prev, curr) =>
+      parseFloat(curr.getAttribute('time')) > parseFloat(prev.getAttribute('time')) ? curr : prev
+    )
+  }
+
   removeKeyframe({ id }) {
     delete this.keyframes[id]
     this.update()
