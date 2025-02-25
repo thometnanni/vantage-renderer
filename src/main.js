@@ -418,6 +418,28 @@ class VantageRenderer extends HTMLElement {
       if (projection.index > index) projection.index--
     })
   }
+
+  getFocusProjectionInterpolation(time) {
+    time = time ?? parseFloat(this.getAttribute('time'))
+    const focusProjection = Object.values(this.projections).find((p) => p.focus)
+
+    if (focusProjection) {
+      const keyframe = focusProjection.getInterpolatedKeyframe(time)
+      console.log(focusProjection.element)
+      focusProjection.element.dispatchEvent(
+        new CustomEvent('vantage:create-keyframe', {
+          bubbles: true,
+          detail: {
+            far: +keyframe.far,
+            fov: +keyframe.fov,
+            position: keyframe.position.split(' ').map((v) => +v),
+            rotation: keyframe.rotation.split(' ').map((v) => +v),
+            time
+          }
+        })
+      )
+    }
+  }
 }
 
 class VantageProjection extends HTMLElement {
@@ -598,8 +620,6 @@ class VantageKeyframe extends HTMLElement {
         }
       })
     )
-
-    
   }
 
   async connectedCallback() {
