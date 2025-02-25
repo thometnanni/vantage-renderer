@@ -71,6 +71,7 @@ export default class Projection {
     this.attributes = attributes
 
     // this.updateLayerMeshes()
+    this.offset = parseFloat(element.getAttribute('time')) || 0
 
     this.index = index
     this.projectionType = projectionType
@@ -112,6 +113,7 @@ export default class Projection {
 
     this.helper = new CameraHelper(this.camera)
     this.#setHelperColor(0x00ff00)
+    this.helper.layers.set(2)
     this.focus = focus
     this.ready = true
   }
@@ -297,15 +299,175 @@ export default class Projection {
     this.plane.translateZ(-this.camera.far + this.camera.far * 0.001)
   }
 
+  selectActiveKeyframe(globalTime) {
+    const offset = parseFloat(this.element.getAttribute('time')) || 0
+    const effectiveTime = globalTime - offset
+    const keyframeEls = Array.from(this.element.querySelectorAll('vantage-keyframe'))
+
+    const validKeyframes = keyframeEls.filter(
+      (kf) => parseFloat(kf.getAttribute('time')) <= effectiveTime
+    )
+    if (validKeyframes.length === 0) return keyframeEls[0]
+    return validKeyframes.reduce((prev, curr) =>
+      parseFloat(curr.getAttribute('time')) > parseFloat(prev.getAttribute('time')) ? curr : prev
+    )
+  }
+
+  hideProjection() {
+    if (this.plane) this.plane.visible = false
+    for (const layer in this.#layers) {
+      if (layer === 'vantage:screen') continue
+      if (this.material[layer]) this.material[layer].visible = false
+    }
+  }
+
+  updateMaterials() {
+    for (const layer in this.#layers) {
+      if (this.material[layer]) {
+        this.material[layer].visible = true
+        this.material[layer].project(this.#layers[layer])
+      }
+    }
+  }
+
+  getInterpolatedKeyframe = (globalTime) => {
+    const offset = parseFloat(this.element.getAttribute('time')) || 0
+    let effectiveTime = globalTime - offset
+    const keyframeEls = Array.from(this.element.querySelectorAll('vantage-keyframe'))
+    const sorted = keyframeEls.sort(
+      (a, b) => parseFloat(a.getAttribute('time')) - parseFloat(b.getAttribute('time'))
+    )
+
+    const firstKeyTime = parseFloat(sorted[0].getAttribute('time')) || 0
+    if (effectiveTime < firstKeyTime) effectiveTime = firstKeyTime
+
+    let active = null,
+      next = null
+    for (let i = 0; i < sorted.length; i++) {
+      const t = parseFloat(sorted[i].getAttribute('time')) || 0
+      if (t <= effectiveTime) {
+        active = sorted[i]
+      } else {
+        next = sorted[i]
+        break
+      }
+    }
+    if (!active) return null
+    if (!next) {
+      return {
+        position: active.getAttribute('position') || '0 0 0',
+        rotation: active.getAttribute('rotation') || '0 0 0',
+        fov: active.getAttribute('fov'),
+        far: active.getAttribute('far'),
+        opacity: active.getAttribute('opacity')
+      }
+    }
+    const activeTime = parseFloat(active.getAttribute('time')) || 0
+    const nextTime = parseFloat(next.getAttribute('time')) || 0
+    const ratio = (effectiveTime - activeTime) / (nextTime - activeTime)
+    const lerp = (a, b, t) => a + (b - a) * t
+    const lerpArray = (strA, strB) => {
+      const aArr = (strA || '0 0 0').split(' ').map(Number)
+      const bArr = (strB || '0 0 0').split(' ').map(Number)
+      return aArr.map((v, i) => lerp(v, bArr[i], ratio)).join(' ')
+    }
+    return {
+      position: lerpArray(active.getAttribute('position'), next.getAttribute('position')),
+      rotation: lerpArray(active.getAttribute('rotation'), next.getAttribute('rotation')),
+      fov: lerp(
+        parseFloat(active.getAttribute('fov')) || 0,
+        parseFloat(next.getAttribute('fov')) || 0,
+        ratio
+      ),
+      far: lerp(
+        parseFloat(active.getAttribute('far')) || 0,
+        parseFloat(next.getAttribute('far')) || 0,
+        ratio
+      ),
+      opacity: lerp(
+        parseFloat(active.getAttribute('opacity')) || 1,
+        parseFloat(next.getAttribute('opacity')) || 1,
+        ratio
+      )
+    }
+  }
+
+  updateCameraFromKeyframe = (data) => {
+    if (this.projectionType === 'map') {
+      let pos, rot
+      if (!data.position || data.position.trim() === '' || data.position.trim() === '0 0 0') {
+        pos = [0, 500, 0]
+      } else {
+        pos = data.position.split(' ').map(Number)
+      }
+
+      if (!data.rotation || data.rotation.trim() === '' || data.rotation.trim() === '0 0 0') {
+        rot = [-Math.PI / 2, -Math.PI / 2, 0]
+      } else {
+        rot = data.rotation.split(' ').map(Number)
+      }
+
+      this.camera.position.set(...pos)
+      this.camera.rotation.set(...rot)
+      this.camera.updateProjectionMatrix()
+      return
+    }
+
+    const pos = data.position.split(' ').map(Number)
+    const rot = data.rotation.split(' ').map(Number)
+    const fov = parseFloat(data.fov)
+    const far = parseFloat(data.far)
+    this.camera.position.set(...pos)
+    this.camera.rotation.set(...rot)
+    if (!isNaN(fov)) {
+      this.camera.fov = fov
+      this.camera.updateProjectionMatrix()
+    }
+    if (!isNaN(far)) {
+      this.camera.far = far
+      this.camera.updateProjectionMatrix()
+    }
+  }
+
   update = () => {
     if (!this.ready || this.scene.getObjectByName('vantage:base') == null) return
+    const rendererEl = this.element.closest('vantage-renderer')
+    const globalTime = rendererEl ? parseFloat(rendererEl.getAttribute('time')) : 0
+    const offset = parseFloat(this.element.getAttribute('time')) || 0
+    if (globalTime < offset) {
+      this.hideProjection()
+      return
+    }
+    const keyframeData = this.getInterpolatedKeyframe(globalTime)
+    if (!keyframeData) {
+      this.hideProjection()
+      return
+    }
+    this.updateCameraFromKeyframe(keyframeData)
     this.updatePlane()
     this.createDepthMap()
     this.helper.update()
+    this.updateMaterials()
+    this.updateVideo(globalTime, { getAttribute: (attr) => keyframeData[attr] })
+  }
 
-    for (const layer in this.#layers) {
-      this.material[layer].project(this.#layers[layer])
-    }
+  // this needs to be fixed
+  updateVideo = (globalTime, keyframeObj) => {
+    if (
+      !this.texture ||
+      !this.texture.source ||
+      !(this.texture.source.data instanceof HTMLVideoElement)
+    )
+      return
+
+    const videoEl = this.texture.source.data
+    if (!videoEl.duration || videoEl.readyState < 2) return
+    videoEl.pause()
+
+    const offset = parseFloat(this.element.getAttribute('time')) || 0
+    let videoTime = globalTime - offset
+    if (videoTime < 0) videoTime = 0
+    videoEl.currentTime = videoTime
   }
 
   createLayers() {

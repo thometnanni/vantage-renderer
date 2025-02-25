@@ -13,6 +13,7 @@ import {
 import { MapControls } from 'three/addons/controls/MapControls'
 import { PointerLockControls } from './CustomPointerLockControls'
 import { DragControls } from 'three/addons/controls/DragControls.js'
+import { getSelectedKeyframe } from './utils'
 
 export default class CameraOperator extends EventDispatcher {
   mapCamera = new PerspectiveCamera(60, innerWidth / innerHeight, 1, 10000)
@@ -155,6 +156,7 @@ export default class CameraOperator extends EventDispatcher {
   keydown = ({ code }) => {
     if (!this.controls) return
     // if (this.mapControls.enabled) return;
+    if (this.firstPerson && !this.fpControls.enabled) return
 
     switch (code) {
       case 'KeyF':
@@ -233,6 +235,16 @@ export default class CameraOperator extends EventDispatcher {
 
     this.fpControls.detachCamera()
 
+    const rendererEl = document.querySelector('vantage-renderer')
+    if (!rendererEl) return
+    const focusedProjection = Array.from(rendererEl.querySelectorAll('vantage-projection')).find(
+      (p) => p.hasAttribute('focus') && p.getAttribute('focus') !== 'false'
+    )
+    if (!focusedProjection) return
+
+    const keyframe = getSelectedKeyframe(focusedProjection)
+    if (!keyframe) return
+    keyframe.setAttribute('fov', this.#focusCamera.fov)
     this.dispatchEvent({
       type: 'vantage:update-fov',
       value: this.#focusCamera.fov
@@ -240,10 +252,11 @@ export default class CameraOperator extends EventDispatcher {
   }
 
   createFocusMarker() {
-    const geom = new SphereGeometry(3, 16, 16)
+    const geom = new SphereGeometry(1, 16, 16)
     const mat = new MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 1.0 })
     this.focusMarker = new Mesh(geom, mat)
     this.focusMarker.name = 'FocusMarker'
+    this.focusMarker.layers.set(2)
     this.scene.add(this.focusMarker)
     this.focusMarker.visible = false
   }
@@ -294,6 +307,8 @@ export default class CameraOperator extends EventDispatcher {
       this.dragControls = null
     }
     this.dragControls = new DragControls([this.focusMarker], this.mapCamera, this.domElement)
+    this.dragControls.raycaster.layers.enable(2)
+
     this.dragControls.addEventListener('dragstart', () => {
       if (this.mapControls) {
         this.mapControls.enabled = false
@@ -312,13 +327,24 @@ export default class CameraOperator extends EventDispatcher {
       const plane = new Plane(new Vector3(0, 1, 0), -focusProjection.camera.position.y)
       const intersection = new Vector3()
       raycaster.ray.intersectPlane(plane, intersection)
-      focusProjection.element.setAttribute('position', [...intersection].join(' '))
-      focusProjection.element.dispatchEvent(
-        new CustomEvent('vantage:set-position', {
-          bubbles: true,
-          detail: { position: [...intersection] }
-        })
-      )
+
+      const rendererEl = focusProjection.element.closest('vantage-renderer')
+      const globalTime = rendererEl ? parseFloat(rendererEl.getAttribute('time')) : 0
+      const activeKeyframe = focusProjection.element.selectActiveKeyframe(globalTime)
+      if (activeKeyframe) {
+        activeKeyframe.setAttribute(
+          'position',
+          `${intersection.x} ${intersection.y} ${intersection.z}`
+        )
+
+        activeKeyframe.dispatchEvent(
+          new CustomEvent('vantage:set-position', {
+            bubbles: true,
+            detail: { position: [...intersection] }
+          })
+        )
+      }
+
     })
   }
 }

@@ -1,6 +1,6 @@
 import { Scene, WebGLRenderer, Vector2, Vector3, Group } from 'three'
 import CameraOperator from './cameraOperator'
-import { loadTexture, parseAttribute, setupScene, setupLights } from './utils'
+import { loadTexture, parseAttribute, setupScene, setupLights, getSelectedKeyframe } from './utils'
 import Projection from './Projection'
 
 class VantageRenderer extends HTMLElement {
@@ -15,12 +15,14 @@ class VantageRenderer extends HTMLElement {
   mousePressed = true
   lastRotation = null
   mouse = new Vector2()
+  initialKeyframeRotation = null
+  initialCameraRotation = null
 
   constructor() {
     super()
   }
 
-  static observedAttributes = ['scene', 'first-person', 'controls']
+  static observedAttributes = ['scene', 'first-person', 'controls', 'time']
 
   async attributeChangedCallback(name, _oldValue, newValue) {
     const value = parseAttribute(name, newValue)
@@ -48,6 +50,11 @@ class VantageRenderer extends HTMLElement {
         this.controls = value
         if (!this.cameraOperator) return
         this.cameraOperator.controls = value
+        break
+      case 'time':
+        Object.values(this.projections).forEach(({ element }) => {
+          element.updateTime(value)
+        })
         break
       default:
         break
@@ -82,12 +89,38 @@ class VantageRenderer extends HTMLElement {
 
     this.addEventListener('vantage:add-projection', (e) => this.addProjection(e.detail))
     this.addEventListener('vantage:update-projection', (e) => this.updateProjection(e.detail))
+    this.addEventListener('vantage:update-projection-multi', (e) => {
+      const { id, attributes } = e.detail
+
+      Object.entries(attributes).forEach(([property, value]) =>
+        this.updateProjection({ id, property, value })
+      )
+    })
     this.addEventListener('vantage:remove-projection', (e) => this.removeProjection(e.detail))
 
     this.addEventListener('mousedown', () => {
       this.mousePressed = true
-      this.lastRotation = null
-      this.addEventListener('mouseup', () => (this.mousePressed = false), { once: true })
+      const focusedProjection = Object.values(this.projections).find(({ focus }) => focus)
+      if (focusedProjection) {
+        const keyframe = getSelectedKeyframe(focusedProjection.element)
+        if (keyframe) {
+          this.initialKeyframeRotation = keyframe.getAttribute('rotation').split(' ').map(Number)
+          this.cameraOperator.fpCamera.rotation.setFromQuaternion(
+            this.cameraOperator.fpCamera.quaternion,
+            'YXZ'
+          )
+          this.initialCameraRotation = [...this.cameraOperator.fpCamera.rotation].slice(0, 3)
+        }
+      }
+      this.addEventListener(
+        'mouseup',
+        () => {
+          this.mousePressed = false
+          this.initialKeyframeRotation = null
+          this.initialCameraRotation = null
+        },
+        { once: true }
+      )
     })
 
     this.cameraOperator = new CameraOperator(this.renderer, {
@@ -98,20 +131,33 @@ class VantageRenderer extends HTMLElement {
       controls: parseAttribute('controls', this.attributes['controls']?.value)
     })
 
-    this.cameraOperator.addEventListener('vantage:unlock-first-person', () => {
-      this.setAttribute('first-person', 'false')
-      this.dispatchEvent(
-        new CustomEvent('vantage:unlock-first-person', {
-          bubbles: true
+    this.cameraOperator.addEventListener('vantage:update-focus-camera', ({ value }) => {
+      if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
+      const focusedProjection = Array.from(document.querySelectorAll('vantage-projection')).find(
+        (p) => p.hasAttribute('focus') && p.getAttribute('focus') !== 'false'
+      )
+      if (!focusedProjection) return
+      const keyframe = getSelectedKeyframe(focusedProjection)
+      if (!keyframe) return
+      keyframe.setAttribute('rotation', value.join(' '))
+      keyframe.dispatchEvent(
+        new CustomEvent('vantage:set-rotation', {
+          bubbles: true,
+          detail: { rotation: value }
         })
       )
     })
 
     this.cameraOperator.addEventListener('vantage:update-fov', ({ value }) => {
-      const target = Object.values(this.projections).find(({ focus }) => focus)
-      if (target == null) return
-      target.element.setAttribute('fov', value)
-      target.element.dispatchEvent(
+      if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
+      const focusedProjection = Array.from(document.querySelectorAll('vantage-projection')).find(
+        (p) => p.hasAttribute('focus') && p.getAttribute('focus') !== 'false'
+      )
+      if (!focusedProjection) return
+      const keyframe = getSelectedKeyframe(focusedProjection)
+      if (!keyframe) return
+      keyframe.setAttribute('fov', value)
+      keyframe.dispatchEvent(
         new CustomEvent('vantage:set-fov', {
           bubbles: true,
           detail: { fov: value }
@@ -119,17 +165,11 @@ class VantageRenderer extends HTMLElement {
       )
     })
 
-    this.cameraOperator.addEventListener('vantage:update-focus-camera', ({ value }) => {
-      if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
-      const target = Object.values(this.projections).find(({ focus }) => focus)
-      if (target == null) return
-      target.element.setAttribute('rotation', value.join(' '))
-      target.element.dispatchEvent(
-        new CustomEvent('vantage:set-rotation', {
-          bubbles: true,
-          detail: {
-            rotation: value
-          }
+    this.cameraOperator.addEventListener('vantage:unlock-first-person', () => {
+      this.setAttribute('first-person', 'false')
+      this.dispatchEvent(
+        new CustomEvent('vantage:unlock-first-person', {
+          bubbles: true
         })
       )
     })
@@ -159,38 +199,144 @@ class VantageRenderer extends HTMLElement {
   }
 
   update = () => {
-    this.updateFocusCamera()
-    const focusProjection = Object.values(this.projections).find(({ focus }) => focus)
+    const globalTime = parseFloat(this.getAttribute('time')) || 0
+    const focusProjection = Object.values(this.projections).find((p) => p.focus)
+
     if (focusProjection && focusProjection.ready) {
-      this.cameraOperator.focusMarker.visible = true
-      this.cameraOperator.focusMarker.position.copy(focusProjection.camera.position)
-      if (!this.cameraOperator.dragControls) {
-        this.cameraOperator.initDragControls(this.projections)
+      this.handleCameraUpdate(focusProjection, globalTime)
+      this.updateFocusMarkerAndControls(focusProjection, globalTime)
+    } else {
+      this.hideFocusMarkerAndDisposeDrag()
+    }
+
+    this.renderScene()
+  }
+
+  handleCameraUpdate(focusProjection, globalTime) {
+    const activeKeyframe = getSelectedKeyframe(focusProjection.element)
+    const keyframeTime = activeKeyframe ? parseFloat(activeKeyframe.getAttribute('time')) : 0
+
+    if (this.cameraOperator.firstPerson) {
+      if (globalTime === keyframeTime) {
+        this.cameraOperator.fpControls.enabled = true
+        if (!this.cameraOperator.dragControls) {
+          this.cameraOperator.initDragControls(this.projections)
+        }
+        this.updateFocusCamera()
+        this.updateFocusRotation()
+        this.syncCamera(this.cameraOperator.fpCamera)
+      } else {
+        this.cameraOperator.fpControls.enabled = false
+        if (this.cameraOperator.dragControls) {
+          this.disposeDragControls()
+        }
+        const keyframeData = focusProjection.getInterpolatedKeyframe(globalTime)
+        if (keyframeData) {
+          focusProjection.updateCameraFromKeyframe(keyframeData)
+        }
+        this.syncCamera(focusProjection.camera)
       }
     } else {
-      if (this.cameraOperator.focusMarker) {
-        this.cameraOperator.focusMarker.visible = false
-      }
-      if (this.cameraOperator.dragControls) {
-        this.cameraOperator.dragControls.dispose()
-        this.cameraOperator.dragControls = null
+      const keyframeData = focusProjection.getInterpolatedKeyframe(globalTime)
+      if (keyframeData) {
+        focusProjection.updateCameraFromKeyframe(keyframeData)
       }
     }
+  }
+
+  updateFocusMarkerAndControls(focusProjection, globalTime) {
+    this.cameraOperator.focusMarker.visible = true
+    this.cameraOperator.focusMarker.position.copy(focusProjection.camera.position)
+
+    if (this.cameraOperator.firstPerson) {
+      const activeKeyframe = getSelectedKeyframe(focusProjection.element)
+      const keyframeTime = activeKeyframe ? parseFloat(activeKeyframe.getAttribute('time')) : 0
+      if (globalTime === keyframeTime && !this.cameraOperator.dragControls) {
+        this.cameraOperator.initDragControls(this.projections)
+      } else if (globalTime !== keyframeTime && this.cameraOperator.dragControls) {
+        this.disposeDragControls()
+      }
+    } else if (!this.cameraOperator.dragControls) {
+      this.cameraOperator.initDragControls(this.projections)
+    }
+  }
+
+  hideFocusMarkerAndDisposeDrag() {
+    if (this.cameraOperator.focusMarker) {
+      this.cameraOperator.focusMarker.visible = false
+    }
+    if (this.cameraOperator.dragControls) {
+      this.disposeDragControls()
+    }
+  }
+
+  syncCamera(sourceCamera) {
+    const targetCamera = this.cameraOperator.camera
+    targetCamera.position.copy(sourceCamera.position)
+    targetCamera.quaternion.copy(sourceCamera.quaternion)
+    if (sourceCamera.fov) {
+      targetCamera.fov = sourceCamera.fov
+      targetCamera.updateProjectionMatrix()
+    }
+  }
+
+  disposeDragControls() {
+    this.cameraOperator.dragControls.dispose()
+    this.cameraOperator.dragControls = null
+  }
+
+  renderScene() {
+    this.renderer.render(this.scene, this.cameraOperator.camera)
+    this.renderer.clearDepth()
+    this.cameraOperator.camera.layers.enable(2)
     this.renderer.render(this.scene, this.cameraOperator.camera)
   }
 
   updateFocusCamera = () => {
     if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
-    const target = Object.values(this.projections).find(({ focus }) => focus)
-    if (target == null) return
+    const projection = Object.values(this.projections).find(({ focus }) => focus)
+    if (!projection) return
     const pos = this.cameraOperator.camera.getWorldPosition(new Vector3())
-    target.element.setAttribute('position', [...pos].join(' '))
-    target.element.dispatchEvent(
+    const keyframe = getSelectedKeyframe(projection.element)
+    if (!keyframe) return
+    keyframe.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`)
+    keyframe.dispatchEvent(
       new CustomEvent('vantage:set-position', {
         bubbles: true,
-        detail: {
-          position: [...pos]
-        }
+        detail: { position: [...pos] }
+      })
+    )
+  }
+
+  updateFocusRotation = () => {
+    if (
+      this.controls !== 'edit' ||
+      !this.cameraOperator.firstPerson ||
+      !this.mousePressed ||
+      !this.initialKeyframeRotation ||
+      !this.initialCameraRotation
+    ) {
+      return
+    }
+
+    // probably there's a betterr way to do this
+    this.cameraOperator.fpCamera.rotation.setFromQuaternion(
+      this.cameraOperator.fpCamera.quaternion,
+      'YXZ'
+    )
+    const currentCameraRotation = [...this.cameraOperator.fpCamera.rotation].slice(0, 3)
+    const deltaRotation = currentCameraRotation.map((val, i) => val - this.initialCameraRotation[i])
+    const newRotation = this.initialKeyframeRotation.map((val, i) => val + deltaRotation[i])
+    const projection = Object.values(this.projections).find(({ focus }) => focus)
+    if (!projection) return
+    const keyframe = getSelectedKeyframe(projection.element)
+    if (!keyframe) return
+
+    keyframe.setAttribute('rotation', newRotation.join(' '))
+    keyframe.dispatchEvent(
+      new CustomEvent('vantage:set-rotation', {
+        bubbles: true,
+        detail: { rotation: newRotation }
       })
     )
   }
@@ -236,6 +382,7 @@ class VantageRenderer extends HTMLElement {
     }
 
     this.projections[id] = projection
+    element.updateTime(parseAttribute('time', this.getAttribute('time') ?? 0))
   }
 
   async updateProjection({ id, property, value }) {
@@ -271,6 +418,28 @@ class VantageRenderer extends HTMLElement {
       if (projection.index > index) projection.index--
     })
   }
+
+  getFocusProjectionInterpolation(time) {
+    time = time ?? parseFloat(this.getAttribute('time'))
+    const focusProjection = Object.values(this.projections).find((p) => p.focus)
+
+    if (focusProjection) {
+      const keyframe = focusProjection.getInterpolatedKeyframe(time)
+      console.log(focusProjection.element)
+      focusProjection.element.dispatchEvent(
+        new CustomEvent('vantage:create-keyframe', {
+          bubbles: true,
+          detail: {
+            far: +keyframe.far,
+            fov: +keyframe.fov,
+            position: keyframe.position.split(' ').map((v) => +v),
+            rotation: keyframe.rotation.split(' ').map((v) => +v),
+            time
+          }
+        })
+      )
+    }
+  }
 }
 
 class VantageProjection extends HTMLElement {
@@ -278,6 +447,9 @@ class VantageProjection extends HTMLElement {
     super()
     this.root = null
     this.projectionId = null
+    this.rendererTime = null
+    this.keyframes = {}
+    this.offset = 0
   }
   static observedAttributes = [
     'src',
@@ -291,14 +463,19 @@ class VantageProjection extends HTMLElement {
     'bounds',
     'focus',
     'opacity',
-    'pass-through'
+    'pass-through',
+    'time'
   ]
+
   async attributeChangedCallback(name, oldValue, value) {
     if (this.projectionId == null) return
     if (name === 'projection-type') {
       this.destroy()
       this.create()
       return
+    }
+    if (name === 'time') {
+      this.offset = parseFloat(value) || 0
     }
     this.dispatchEvent(
       new CustomEvent('vantage:update-projection', {
@@ -314,8 +491,15 @@ class VantageProjection extends HTMLElement {
   }
 
   async connectedCallback() {
-    this.projectionId = this.id ?? crypto.randomUUID().split('-')[0]
+    this.projectionId = this.id || crypto?.randomUUID?.().split('-')[0] || `k-${Math.random()}`
     this.vantageRenderer = this.parentElement
+    this.rendererTime = parseAttribute('time', this.parentElement.getAttribute('time') ?? 0)
+    this.offset = parseFloat(this.getAttribute('time')) || 0
+
+    this.addEventListener('vantage:add-keyframe', (e) => this.addKeyframe(e.detail))
+    this.addEventListener('vantage:update-keyframe', (e) => this.updateKeyframe(e.detail))
+    this.addEventListener('vantage:remove-keyframe', (e) => this.removeKeyframe(e.detail))
+
     this.create()
   }
 
@@ -343,14 +527,140 @@ class VantageProjection extends HTMLElement {
   destroy() {
     const event = new CustomEvent('vantage:remove-projection', {
       bubbles: true,
-      detail: {
-        id: this.projectionId
-      }
+      detail: { id: this.projectionId }
     })
     this.vantageRenderer.dispatchEvent(event)
+  }
+
+  updateTime(time) {
+    this.rendererTime = time
+    this.update()
+  }
+
+  async addKeyframe({ id, attributes }) {
+    this.keyframes[id] = attributes
+    this.update()
+  }
+
+  async updateKeyframe({ id, property, value }) {
+    this.keyframes[id][property] = value
+    this.update()
+  }
+
+  selectActiveKeyframe(globalTime) {
+    const keyframes = Array.from(this.querySelectorAll('vantage-keyframe'))
+    const valid = keyframes.filter((kf) => parseFloat(kf.getAttribute('time')) <= globalTime)
+    if (valid.length === 0) return null
+    return valid.reduce((prev, curr) =>
+      parseFloat(curr.getAttribute('time')) > parseFloat(prev.getAttribute('time')) ? curr : prev
+    )
+  }
+
+  removeKeyframe({ id }) {
+    delete this.keyframes[id]
+    this.update()
+  }
+
+  updateActiveKeyframeFromTransform() {
+    const activeKeyframe = this.querySelector('vantage-keyframe')
+    if (!activeKeyframe) return
+    const pos = this.camera.position
+    const rot = this.camera.rotation
+    activeKeyframe.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`)
+    activeKeyframe.setAttribute('rotation', `${rot.x} ${rot.y} ${rot.z}`)
+    activeKeyframe.setAttribute('fov', this.camera.fov)
+    activeKeyframe.setAttribute('far', this.camera.far)
+  }
+
+  update() {
+    if (Object.keys(this.keyframes).length === 0) return
+    const keyframes = Object.values(this.keyframes).toSorted((a, b) => a.time - b.time)
+
+    const keyframe = keyframes.findLast(({ time }) => time <= this.rendererTime) ?? keyframes[0]
+    this.dispatchEvent(
+      new CustomEvent('vantage:update-projection-multi', {
+        bubbles: true,
+        detail: {
+          id: this.projectionId,
+          attributes: keyframe
+        }
+      })
+    )
+  }
+}
+
+class VantageKeyframe extends HTMLElement {
+  constructor() {
+    super()
+    this.root = null
+    this.keyframeId = null
+  }
+  static observedAttributes = [
+    'position',
+    'rotation',
+    'fov',
+    'far',
+    'screen',
+    'bounds',
+    'focus',
+    'opacity',
+    'pass-through',
+    'time'
+  ]
+  async attributeChangedCallback(name, oldValue, value) {
+    if (this.keyframeId == null) return
+    this.dispatchEvent(
+      new CustomEvent('vantage:update-keyframe', {
+        bubbles: true,
+        detail: {
+          id: this.keyframeId,
+          property: name,
+          value: parseAttribute(name, value),
+          oldValue: parseAttribute(name, oldValue)
+        }
+      })
+    )
+  }
+
+  async connectedCallback() {
+    this.keyframeId = this.id || crypto?.randomUUID?.().split('-')[0] || `k-${Math.random()}`
+    this.vantageProjection = this.parentElement
+    this.create()
+  }
+
+  create() {
+    const attributes = Object.fromEntries(
+      [...this.attributes].map(({ name, value }) => [name, parseAttribute(name, value)])
+    )
+
+    const event = new CustomEvent('vantage:add-keyframe', {
+      bubbles: true,
+      detail: {
+        id: this.keyframeId,
+        element: this,
+        attributes
+      }
+    })
+
+    this.dispatchEvent(event)
+  }
+
+  disconnectedCallback() {
+    this.destroy()
+  }
+
+  destroy() {
+    const event = new CustomEvent('vantage:remove-keyframe', {
+      bubbles: true,
+      detail: {
+        id: this.keyframeId
+      }
+    })
+    this.vantageProjection.dispatchEvent(event)
   }
 }
 
 customElements.define('vantage-renderer', VantageRenderer)
 customElements.define('vantage-projection', VantageProjection)
+customElements.define('vantage-keyframe', VantageKeyframe)
 export default VantageRenderer

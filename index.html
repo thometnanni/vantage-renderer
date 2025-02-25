@@ -14,257 +14,145 @@
         controls="edit"
         first-person="false"
         style="pointer-events: auto"
+        time="0"
       >
         <vantage-projection
           id="projection-1"
           src="./media/aerial.jpg"
           projection-type="map"
-        ></vantage-projection>
-
+          time="0"
+        >
+          <vantage-keyframe time="0"></vantage-keyframe>
+        </vantage-projection>
         <vantage-projection
           id="projection-2"
           src="https://media.thometnanni.net/long-story.mp4"
-          position="-10 0.9300571526624671 30.421468453725566"
-          rotation="0.08599999999999962 -0.5200000000000005 -1.7411583119434143e-17"
-          fov="61"
-          far="63"
-          screen="true"
           layers="Buildings Ground"
-          focus
-        ></vantage-projection>
-
-        <vantage-projection
-          id="projection-3"
-          src="./media/IMG_3271.jpeg"
-          position="38.89105577493452 1.596007992385184 15.467554987397904"
-          rotation="0.023999999999999657 -1.5800000000000094 2.602834794405102e-17"
-          far="84"
-          layers="Buildings Ground"
-          screen="true"
-          pass-through=""
-          fov="53"
-          opacity=".8"
-        ></vantage-projection>
-
-        <vantage-projection
-          id="projection-4"
-          src="./media/prinz-1.jpg"
-          position="332.7978567718118 1.4705038647204838 -74.16062977140834"
-          rotation="0.1419999999999997 1.1220000000000068 6.16831112026121e-16"
-          far="66"
-          layers="Buildings Ground"
-          screen="true"
-          pass-through=""
-          fov="63"
-        ></vantage-projection>
-
-        <vantage-projection
-          id="projection-5"
-          src="./media/prinz-2.jpg"
-          position="300.3924330507958 1 -61.9849352551449"
-          rotation="0.018000000000001147 -0.3719999999999884 1.1034628868824297e-15"
-          far="85"
-          layers="Buildings Ground"
-          screen="true"
-          pass-through=""
-          fov="63"
-        ></vantage-projection>
-
-        <vantage-projection
-          id="projection-6"
-          src="./media/warthe-eck.jpg"
-          position="133.29314431075227 4.324259787050994 -38.42700744166996"
-          rotation="-0.020000000000008112 -2.0780000000000403 5.703176662847664e-15"
-          fov="72"
-          far="78"
-          screen="true"
-          layers="Buildings Ground"
-        ></vantage-projection>
+          time="0.0"
+        >
+          <vantage-keyframe
+            position="-21.000150790288302 0.9300571526624671 32.01275514342212"
+            rotation="0.09000000000000065 -0.6939999999999961 -2.786836633470502e-17"
+            fov="44.4"
+            far="30"
+            time="0.0"
+            screen="true"
+          ></vantage-keyframe>
+          <vantage-keyframe
+            position="-10 0.9300571526624671 30.421468453725566"
+            rotation="0.08599999999999962 -0.5200000000000005 -1.7411583119434143e-17"
+            fov="61"
+            far="63"
+            time="5.0"
+            screen="true"
+          ></vantage-keyframe>
+        </vantage-projection>
+        <vantage-projection id="projection-3" src="./media/IMG_3271.jpeg" time="0.0">
+          <vantage-keyframe
+            position="38.89105577493452 1.596007992385184 15.467554987397904"
+            rotation="0.023999999999999657 -1.5800000000000094 2.602834794405102e-17"
+            fov="53"
+            far="84"
+            layers="Buildings Ground"
+            screen="true"
+            opacity=".8"
+            time="0.0"
+          ></vantage-keyframe>
+        </vantage-projection>
+        <vantage-projection id="projection-4" src="./media/prinz-1.jpg" time="3.0">
+          <vantage-keyframe
+            position="332.7978567718118 1.4705038647204838 -74.16062977140834"
+            rotation="0.1419999999999997 1.1220000000000068 6.16831112026121e-16"
+            fov="63"
+            far="66"
+            layers="Buildings Ground"
+            screen="true"
+            time="0.0"
+          ></vantage-keyframe>
+        </vantage-projection>
+        <vantage-projection id="projection-5" src="./media/prinz-2.jpg" time="4.0">
+          <vantage-keyframe
+            position="300.3924330507958 1 -61.9849352551449"
+            rotation="0.018000000000001147 -0.3719999999999884 1.1034628868824297e-15"
+            fov="63"
+            far="85"
+            layers="Buildings Ground"
+            screen="true"
+            time="0.0"
+          ></vantage-keyframe>
+        </vantage-projection>
+        <vantage-projection id="projection-6" src="./media/warthe-eck.jpg" time="5.0">
+          <vantage-keyframe
+            position="133.29314431075227 4.324259787050994 -38.42700744166996"
+            rotation="-0.020000000000008112 -2.0780000000000403 5.703176662847664e-15"
+            fov="72"
+            far="78"
+            layers="Buildings Ground"
+            screen="true"
+            time="0.0"
+          ></vantage-keyframe>
+        </vantage-projection>
       </vantage-renderer>
     </section>
-    <div class="controls">
-      <div>
-        <h3>Media</h3>
-        <select id="projectionSelector">
-          <option value="projection-2">Camera 2</option>
-          <option value="projection-3">Camera 3</option>
-          <option value="projection-4">Camera 4</option>
-          <option value="projection-5">Camera 5</option>
-          <option value="projection-6">Camera 6</option>
-          <option value="projection-1">Camera 1 (Map)</option>
-        </select>
-      </div>
 
-      <div>
-        <h3>Camera Positioning</h3>
-        <label>X: <input id="posX" type="number" step="1" /></label>
-        <label>Y: <input id="posY" type="number" step="1" /></label>
-        <label>Z: <input id="posZ" type="number" step="1" /></label>
-      </div>
-      <div>
-        <h4>Rotation</h4>
-        <label>X: <input id="rotX" type="number" step="0.1" /></label>
-        <label>Y: <input id="rotY" type="number" step="0.1" /></label>
-        <label>Z: <input id="rotZ" type="number" step="0.1" /></label>
-      </div>
-      <div>
-        <h4>Depth</h4>
-        <label>Far: <input id="far" type="number" step="1" /></label>
-        <label>Field of View: <input id="fov" type="number" step="1" /></label>
-      </div>
-      <div>
-        <h4>Project on:</h4>
-        <label><input type="checkbox" id="layerBuildings" />Buildings</label>
-        <label><input type="checkbox" id="layerGround" />Ground</label>
-        <label><input type="checkbox" id="layerPlane" />Plane</label>
-      </div>
-      <div>
-        <label>Opacity: <input id="opacity" type="number" min="0" max="1" step="0.1" /></label>
-      </div>
-      <button onclick="toggleFirstPerson()">Toggle First Person</button>
+    <div class="timeline">
+      <button id="playButton">Play</button>
+
+      <input
+        id="time"
+        type="range"
+        step="0.04"
+        min="0"
+        max="10"
+        oninput="updateTime(event)"
+        value="0"
+      />
     </div>
     <div class="info">
       ©️
       <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
       contributors
     </div>
-
     <script type="module" src="/src/main.js"></script>
     <script>
-      function observeProjection(projection) {
-        if (projection._observerAttached) return
-        projection._observerAttached = true
+      const maxTime = 10
+      let isPlaying = false
+      let lastTimestamp = 0
 
-        const observer = new MutationObserver((mutations) => {
-          let updateValues = false
-          let updateSelector = false
-          mutations.forEach((mutation) => {
-            if (mutation.attributeName === 'focus') {
-              updateSelector = true
-            } else {
-              updateValues = true
-            }
-          })
-          if (updateValues) {
-            loadProjectionValues(projection)
-          }
-          if (
-            updateSelector &&
-            projection.hasAttribute('focus') &&
-            projection.getAttribute('focus') !== 'false'
-          ) {
-            document.getElementById('projectionSelector').value = projection.id
-          }
-        })
-        observer.observe(projection, {
-          attributes: true,
-          attributeFilter: ['position', 'rotation', 'fov', 'far', 'layers', 'opacity', 'focus']
-        })
+      function playLoop(timestamp) {
+        if (!lastTimestamp) lastTimestamp = timestamp
+        const delta = (timestamp - lastTimestamp) / 1000
+        lastTimestamp = timestamp
+        if (isPlaying) {
+          const rendererEl = document.querySelector('vantage-renderer')
+          let currentTime = parseFloat(rendererEl.getAttribute('time')) || 0
+          currentTime += delta
+          if (currentTime > maxTime) currentTime = 0
+          rendererEl.setAttribute('time', currentTime)
+          document.getElementById('time').value = currentTime
+        }
+        requestAnimationFrame(playLoop)
+      }
+
+      function updateTime(e) {
+        const newTime = parseFloat(e.target.value)
+        document.querySelector('vantage-renderer').setAttribute('time', newTime)
       }
 
       document.addEventListener('DOMContentLoaded', () => {
-        const selector = document.getElementById('projectionSelector')
+        isPlaying = true
+        lastTimestamp = 0
+        requestAnimationFrame(playLoop)
+        document.getElementById('playButton').textContent = 'Pause'
 
-        document.querySelectorAll('vantage-projection').forEach((proj) => {
-          observeProjection(proj)
+        document.getElementById('playButton').addEventListener('click', () => {
+          isPlaying = !isPlaying
+          document.getElementById('playButton').textContent = isPlaying ? 'Pause' : 'Play'
+          if (isPlaying) {
+            lastTimestamp = 0
+            requestAnimationFrame(playLoop)
+          }
         })
-
-        selector.addEventListener('change', () => selectProjection(selector.value))
-
-        selectProjection(selector.value)
-      })
-
-      function selectProjection(id) {
-        document.querySelectorAll('vantage-projection').forEach((p) => p.removeAttribute('focus'))
-
-        const projection = document.getElementById(id)
-        projection.setAttribute('focus', '')
-
-        loadProjectionValues(projection)
-      }
-
-      function loadProjectionValues(projection) {
-        const pos = (projection.getAttribute('position') || '0 0 0').split(' ')
-        document.getElementById('posX').value = pos[0]
-        document.getElementById('posY').value = pos[1]
-        document.getElementById('posZ').value = pos[2]
-
-        const rot = (projection.getAttribute('rotation') || '0 0 0').split(' ')
-        document.getElementById('rotX').value = rot[0]
-        document.getElementById('rotY').value = rot[1]
-        document.getElementById('rotZ').value = rot[2]
-
-        document.getElementById('fov').value = projection.getAttribute('fov') || ''
-        document.getElementById('far').value = projection.getAttribute('far') || ''
-        document.getElementById('opacity').value = projection.getAttribute('opacity') || '1'
-
-        const layers = projection.getAttribute('layers') || ''
-        document.getElementById('layerBuildings').checked = layers.includes('Buildings')
-        document.getElementById('layerGround').checked = layers.includes('Ground')
-        document.getElementById('layerPlane').checked = projection.getAttribute('screen') === 'true'
-      }
-
-      function applyChanges() {
-        const id = document.getElementById('projectionSelector').value
-        const projection = document.getElementById(id)
-
-        const posX = parseFloat(document.getElementById('posX').value) || 0
-        const posY = parseFloat(document.getElementById('posY').value) || 0
-        const posZ = parseFloat(document.getElementById('posZ').value) || 0
-        projection.setAttribute('position', `${posX} ${posY} ${posZ}`)
-
-        const rotX = parseFloat(document.getElementById('rotX').value) || 0
-        const rotY = parseFloat(document.getElementById('rotY').value) || 0
-        const rotZ = parseFloat(document.getElementById('rotZ').value) || 0
-        projection.setAttribute('rotation', `${rotX} ${rotY} ${rotZ}`)
-
-        const fov = document.getElementById('fov').value
-        if (fov !== '') {
-          projection.setAttribute('fov', parseFloat(fov))
-        } else {
-          projection.removeAttribute('fov')
-        }
-
-        const far = document.getElementById('far').value
-        if (far !== '') {
-          projection.setAttribute('far', parseFloat(far))
-        } else {
-          projection.removeAttribute('far')
-        }
-
-        const opacity = document.getElementById('opacity').value
-        if (opacity !== '') {
-          projection.setAttribute('opacity', parseFloat(opacity))
-        } else {
-          projection.removeAttribute('opacity')
-        }
-
-        const buildings = document.getElementById('layerBuildings').checked
-        const ground = document.getElementById('layerGround').checked
-        const screen = document.getElementById('layerPlane').checked
-
-        const newLayers = []
-        if (buildings) newLayers.push('Buildings')
-        if (ground) newLayers.push('Ground')
-        if (newLayers.length) {
-          projection.setAttribute('layers', newLayers.join(' '))
-        } else {
-          projection.removeAttribute('layers')
-        }
-
-        projection.setAttribute('screen', screen ? true : false)
-      }
-
-      function toggleFirstPerson() {
-        const renderer = document.querySelector('vantage-renderer')
-        const current = renderer.getAttribute('first-person')
-        renderer.setAttribute('first-person', current === 'true' ? 'false' : 'true')
-      }
-
-      document.querySelector('.controls').addEventListener('input', (e) => {
-        if (e.target.matches('input[type="number"], input[type="checkbox"]')) {
-          applyChanges()
-        }
       })
     </script>
   </body>
@@ -274,34 +162,27 @@
       margin: 0;
       padding: 0;
       font-family: sans-serif;
-      font-size: 11px;
-      text-rendering: optimizeLegibility;
+      height: 100%;
     }
-
     section {
       width: 100vw;
       height: 100vh;
     }
-
-    h1,
-    h3,
-    h4 {
-      margin: 5px 0;
-      padding: 0;
-    }
-
-    .controls div {
-      margin: 0 0 20px 0;
-    }
-
-    .controls {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: #f5f5f5;
-      box-shadow: inset 0 0 2px;
-      padding: 5px;
+    .timeline {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgb(245, 245, 245);
+      padding: 10px 15px;
       border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .timeline input[type='range'] {
+      width: 300px;
     }
 
     .info {
@@ -311,18 +192,6 @@
       background-color: white;
       padding: 2px;
       font-size: 12px;
-      opacity: 0.7;
-    }
-
-    button,
-    select {
-      margin-top: 10px;
-      display: block;
-    }
-
-    input[type='number'] {
-      max-width: 40px;
-      display: inline;
     }
   </style>
 </html>
