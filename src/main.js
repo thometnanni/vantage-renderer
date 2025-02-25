@@ -140,35 +140,6 @@ class VantageRenderer extends HTMLElement {
       )
     })
 
-    this.cameraOperator.addEventListener('vantage:update-fov', ({ value }) => {
-      const target = Object.values(this.projections).find(({ focus }) => focus)
-      if (target == null) return
-      target.element.setAttribute('fov', value)
-      target.element.dispatchEvent(
-        new CustomEvent('vantage:set-fov', {
-          bubbles: true,
-          detail: { fov: value }
-        })
-      )
-    })
-
-    this.cameraOperator.addEventListener('vantage:update-focus-camera', ({ value }) => {
-      if (this.controls !== 'edit' || !this.cameraOperator.firstPerson) return
-      const focusedProjection = Array.from(document.querySelectorAll('vantage-projection')).find(
-        (p) => p.hasAttribute('focus') && p.getAttribute('focus') !== 'false'
-      )
-      if (!focusedProjection) return
-      const keyframe = getSelectedKeyframe(focusedProjection)
-      if (!keyframe) return
-      keyframe.setAttribute('rotation', value.join(' '))
-      keyframe.dispatchEvent(
-        new CustomEvent('vantage:set-rotation', {
-          bubbles: true,
-          detail: { rotation: value }
-        })
-      )
-    })
-
     const screens = new Group()
     screens.name = 'vantage:screens'
     this.scene.add(setupLights(), screens)
@@ -594,6 +565,26 @@ class VantageKeyframe extends HTMLElement {
         }
       })
     )
+
+    if (name === 'fov') {
+      const fovValue = parseFloat(value)
+      this.dispatchEvent(
+        new CustomEvent('vantage:update-fov', {
+          bubbles: true,
+          detail: { fov: fovValue }
+        })
+      )
+    }
+
+    if (name === 'rotation') {
+      const rotationArray = value.split(' ').map(Number)
+      this.dispatchEvent(
+        new CustomEvent('vantage:update-focus-camera', {
+          bubbles: true,
+          detail: { rotation: rotationArray }
+        })
+      )
+    }
   }
 
   async connectedCallback() {
