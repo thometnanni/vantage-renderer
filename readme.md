@@ -15,15 +15,6 @@ Install via npm:
 
 `npm install vantage-renderer`
 
-Or clone the repository:
-
-```
-git clone https://github.com/thometnanni/vantage-renderer.git
-cd vantage-renderer
-npm install
-npm run dev
-```
-
 ## Usage
 
 Include the custom elements in your HTML:
@@ -45,4 +36,13 @@ Include the custom elements in your HTML:
   </vantage-renderer>
 </body>
 </html>
+```
+
+## Development
+
+```
+git clone https://github.com/thometnanni/vantage-renderer.git
+cd vantage-renderer
+npm install
+npm run dev
 ```
