@@ -28,7 +28,7 @@ npm run dev
 
 Include the custom elements in your HTML:
 
-```
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
