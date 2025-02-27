@@ -213,29 +213,29 @@ class VantageRenderer extends HTMLElement {
   }
 
   handleCameraUpdate(focusProjection, globalTime) {
-    const activeKeyframe = getSelectedKeyframe(focusProjection.element)
-    const keyframeTime = activeKeyframe ? parseFloat(activeKeyframe.getAttribute('time')) : 0
+    // const activeKeyframe = getSelectedKeyframe(focusProjection.element)
+    // const keyframeTime = activeKeyframe ? parseFloat(activeKeyframe.getAttribute('time')) : 0
 
     if (this.cameraOperator.firstPerson) {
-      if (globalTime === keyframeTime) {
-        this.cameraOperator.fpControls.enabled = true
-        if (!this.cameraOperator.dragControls) {
-          this.cameraOperator.initDragControls(this.projections)
-        }
-        this.updateFocusCamera()
-        this.updateFocusRotation()
-        this.syncCamera(this.cameraOperator.fpCamera)
-      } else {
-        this.cameraOperator.fpControls.enabled = false
-        if (this.cameraOperator.dragControls) {
-          this.disposeDragControls()
-        }
-        const keyframeData = focusProjection.getInterpolatedKeyframe(globalTime)
-        if (keyframeData) {
-          focusProjection.updateCameraFromKeyframe(keyframeData)
-        }
-        this.syncCamera(focusProjection.camera)
+      // if (globalTime === keyframeTime) {
+      this.cameraOperator.fpControls.enabled = true
+      if (!this.cameraOperator.dragControls) {
+        this.cameraOperator.initDragControls(this.projections)
       }
+      this.updateFocusCamera()
+      this.updateFocusRotation()
+      this.syncCamera(this.cameraOperator.fpCamera)
+      // } else {
+      //   this.cameraOperator.fpControls.enabled = false
+      //   if (this.cameraOperator.dragControls) {
+      //     this.disposeDragControls()
+      //   }
+      //   const keyframeData = focusProjection.getInterpolatedKeyframe(globalTime)
+      //   if (keyframeData) {
+      //     focusProjection.updateCameraFromKeyframe(keyframeData)
+      //   }
+      //   this.syncCamera(focusProjection.camera)
+      // }
     } else {
       const keyframeData = focusProjection.getInterpolatedKeyframe(globalTime)
       if (keyframeData) {
@@ -298,6 +298,7 @@ class VantageRenderer extends HTMLElement {
     if (!projection) return
     const pos = this.cameraOperator.camera.getWorldPosition(new Vector3())
     const keyframe = getSelectedKeyframe(projection.element)
+    console.log(keyframe.getAttribute('time'))
     if (!keyframe) return
     keyframe.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`)
     keyframe.dispatchEvent(
@@ -425,7 +426,6 @@ class VantageRenderer extends HTMLElement {
 
     if (focusProjection) {
       const keyframe = focusProjection.getInterpolatedKeyframe(time)
-      console.log(focusProjection.element)
       focusProjection.element.dispatchEvent(
         new CustomEvent('vantage:create-keyframe', {
           bubbles: true,
@@ -549,11 +549,17 @@ class VantageProjection extends HTMLElement {
 
   selectActiveKeyframe(globalTime) {
     const keyframes = Array.from(this.querySelectorAll('vantage-keyframe'))
-    const valid = keyframes.filter((kf) => parseFloat(kf.getAttribute('time')) <= globalTime)
-    if (valid.length === 0) return null
-    return valid.reduce((prev, curr) =>
-      parseFloat(curr.getAttribute('time')) > parseFloat(prev.getAttribute('time')) ? curr : prev
-    )
+
+    const keyframe = keyframes
+      .sort((a, b) => +a.getAttribute('time') - +b.getAttribute('time'))
+      .findLast((keyframe, index) => {
+        const projectionTime = +this.getAttribute('time')
+        const keyframeTime = +keyframe.getAttribute('time')
+
+        return keyframeTime + projectionTime <= globalTime || index === 0
+      })
+
+    return keyframe
   }
 
   removeKeyframe({ id }) {

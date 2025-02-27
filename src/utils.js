@@ -151,15 +151,26 @@ function getActiveKeyframe(projection) {
   if (!keyframes.length) return null
   let active = keyframes[0]
   keyframes.forEach((kf) => {
-    const t = parseFloat(kf.getAttribute('time')) || 0
+    const t = +kf.getAttribute('time') || 0
     if (
-      t <= (parseFloat(projection.closest('vantage-renderer').getAttribute('time')) || 0) &&
-      t > (parseFloat(active.getAttribute('time')) || 0)
+      t <= (+projection.closest('vantage-renderer').getAttribute('time') || 0) &&
+      t > (+active.getAttribute('time') || 0)
     ) {
       active = kf
     }
   })
-  return active
+
+  const keyframe = keyframes
+    .sort((a, b) => +a.getAttribute('time') - +b.getAttribute('time'))
+    .findLast((keyframe, index) => {
+      const globalTime = +projection.closest('vantage-renderer').getAttribute('time')
+      const projectionTime = +projection.getAttribute('time')
+      const keyframeTime = +keyframe.getAttribute('time')
+
+      return keyframeTime + projectionTime <= globalTime || index === 0
+    })
+
+  return keyframe
 }
 
 function getSelectedKeyframe(projection) {
