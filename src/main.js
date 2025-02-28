@@ -298,7 +298,6 @@ class VantageRenderer extends HTMLElement {
     if (!projection) return
     const pos = this.cameraOperator.camera.getWorldPosition(new Vector3())
     const keyframe = getSelectedKeyframe(projection.element)
-    console.log(keyframe.getAttribute('time'))
     if (!keyframe) return
     keyframe.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`)
     keyframe.dispatchEvent(
