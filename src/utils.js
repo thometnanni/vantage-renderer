@@ -126,7 +126,7 @@ async function setupScene(url) {
   base.add(...meshes, edges)
 
   const bbox = new Box3().setFromObject(base)
-  const bounds = [bbox.max.z, bbox.min.z, bbox.min.x, bbox.max.x]
+  const bounds = [-bbox.min.x, -bbox.max.x, bbox.min.z, bbox.max.z]
 
   return { base, bounds }
 }

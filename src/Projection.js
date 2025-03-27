@@ -79,7 +79,7 @@ export default class Projection {
     if (this.projectionType === 'map') {
       this.camera = new OrthographicCamera(...(bounds ?? [100, -100, -100, 100]), 0, far)
       this.position = [0, 500, 0]
-      this.rotation = [-Math.PI / 2, -Math.PI / 2, 0, 'YXZ']
+      this.rotation = [-Math.PI / 2, Math.PI, 0, 'YXZ']
     } else if (this.projectionType === 'orthographic') {
       // to do
       this.position = position
@@ -402,7 +402,7 @@ export default class Projection {
       }
 
       if (!data.rotation || data.rotation.trim() === '' || data.rotation.trim() === '0 0 0') {
-        rot = [-Math.PI / 2, -Math.PI / 2, 0]
+        rot = [-Math.PI / 2, Math.PI, 0]
       } else {
         rot = data.rotation.split(' ').map(Number)
       }
