@@ -53,13 +53,13 @@ export default class Projection {
     near = 1,
     projectionType = 'perspective',
     textureSource,
-    screen,
+    screen = true,
     attributes,
     id,
-    focus,
-    opacity,
+    focus = true,
+    opacity = 1,
     element,
-    index
+    index = 0
   } = {}) {
     this.id = id
     this.renderer = renderer

@@ -183,7 +183,13 @@ function getSelectedKeyframe(projection) {
   return getActiveKeyframe(projection)
 }
 
+function getScene(object3D) {
+  if (object3D.parent != null) return getScene(object3D.parent)
+  return object3D.type === 'Scene' ? object3D : null
+}
+
 export {
+  getScene,
   loadTexture,
   loadScene,
   unpackGroup,

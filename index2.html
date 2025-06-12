@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vantage Renderer</title>
+  </head>
+
+  <body>
+    <section>
+      <vantage-renderer controls="edit" first-person="false" style="pointer-events: auto" time="0">
+        <vantage-map-controls></vantage-map-controls>
+        <vantage-model src="./media/scene.gltf"></vantage-model>
+        <vantage-projection id="projection-3" src="./media/IMG_3271.jpeg" time="0.0">
+          <!-- <vantage-keyframe
+            position="38.89105577493452 1.596007992385184 15.467554987397904"
+            rotation="0.023999999999999657 -1.5800000000000094 2.602834794405102e-17"
+            fov="53"
+            far="70"
+            layers="Buildings Ground"
+            screen="true"
+            opacity=".8"
+            time="0.0"
+          ></vantage-keyframe> -->
+        </vantage-projection>
+      </vantage-renderer>
+    </section>
+
+    <div class="timeline">
+      <button id="playButton">Play</button>
+
+      <input
+        id="time"
+        type="range"
+        step="0.04"
+        min="0"
+        max="100"
+        oninput="updateTime(event)"
+        value="0"
+      />
+    </div>
+    <div class="info">
+      ©️
+      <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
+      contributors
+    </div>
+    <script type="module" src="/src/main.js"></script>
+    <script>
+      const maxTime = +document.querySelector('#time').getAttribute('max')
+      let isPlaying = false
+      let lastTimestamp = 0
+
+      function playLoop(timestamp) {
+        if (!lastTimestamp) lastTimestamp = timestamp
+        const delta = (timestamp - lastTimestamp) / 1000
+        lastTimestamp = timestamp
+        if (isPlaying) {
+          const rendererEl = document.querySelector('vantage-renderer')
+          let currentTime = parseFloat(rendererEl.getAttribute('time')) || 0
+          currentTime += delta
+          if (currentTime > maxTime) currentTime = 0
+          rendererEl.setAttribute('time', currentTime)
+          document.getElementById('time').value = currentTime
+        }
+        requestAnimationFrame(playLoop)
+      }
+
+      function updateTime(e) {
+        const newTime = parseFloat(e.target.value)
+        document.querySelector('vantage-renderer').setAttribute('time', newTime)
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        isPlaying = true
+        lastTimestamp = 0
+        requestAnimationFrame(playLoop)
+        document.getElementById('playButton').textContent = 'Pause'
+
+        document.getElementById('playButton').addEventListener('click', () => {
+          isPlaying = !isPlaying
+          document.getElementById('playButton').textContent = isPlaying ? 'Pause' : 'Play'
+          if (isPlaying) {
+            lastTimestamp = 0
+            requestAnimationFrame(playLoop)
+          }
+        })
+      })
+    </script>
+  </body>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      height: 100%;
+    }
+    section {
+      width: 100vw;
+      height: 100vh;
+    }
+    .timeline {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgb(245, 245, 245);
+      padding: 10px 15px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .timeline input[type='range'] {
+      width: 300px;
+    }
+
+    .info {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background-color: white;
+      padding: 2px;
+      font-size: 12px;
+    }
+  </style>
+</html>

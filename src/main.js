@@ -2,6 +2,10 @@ import { Scene, WebGLRenderer, Vector2, Vector3, Group } from 'three'
 import CameraOperator from './cameraOperator'
 import { loadTexture, parseAttribute, setupScene, setupLights, getSelectedKeyframe } from './utils'
 import Projection from './Projection'
+import { VantageRenderer as VRenderer } from './VantageRenderer'
+import { VantageModel } from './VantageModel'
+import { VantageProjection as VProjection } from './VantageProjection'
+import { VantageMapControls } from './VantageMapControls'
 
 class VantageRenderer extends HTMLElement {
   root
@@ -17,9 +21,25 @@ class VantageRenderer extends HTMLElement {
   mouse = new Vector2()
   initialKeyframeRotation = null
   initialCameraRotation = null
+  time = 0
 
   constructor() {
     super()
+
+    // const observer = new MutationObserver((mutationList, observer) => {
+    //   for (const mutation of mutationList) {
+    //     if (mutation.type === 'childList') {
+    //       console.log('A child node has been added or removed.')
+    //     } else if (mutation.type === 'attributes') {
+    //       console.log(`The ${mutation.attributeName} attribute was modified.`)
+    //     }
+    //     console.log(mutation)
+    //   }
+    // })
+
+    // // console.log(this.childNodes)
+
+    // observer.observe(this, { attributes: true, childList: true, subtree: true })
   }
 
   static observedAttributes = ['scene', 'first-person', 'controls', 'time']
@@ -51,11 +71,21 @@ class VantageRenderer extends HTMLElement {
         if (!this.cameraOperator) return
         this.cameraOperator.controls = value
         break
-      case 'time':
+      case 'time': {
+        this.time = value
+        this.dispatchEvent(
+          new CustomEvent('vantage:time-update', {
+            bubbles: true,
+            detail: {
+              time: value
+            }
+          })
+        )
         Object.values(this.projections).forEach(({ element }) => {
           element.updateTime(value)
         })
         break
+      }
       default:
         break
     }
@@ -595,10 +625,18 @@ class VantageProjection extends HTMLElement {
 }
 
 class VantageKeyframe extends HTMLElement {
+  timeUpdateEventListener = null
   constructor() {
     super()
     this.root = null
     this.keyframeId = null
+
+    this.timeUpdateEventListener = this.parentElement.parentElement.addEventListener(
+      'vantage:time-update',
+      (e) => {
+        // console.log(e.detail.time)
+      }
+    )
   }
   static observedAttributes = [
     'position',
@@ -655,6 +693,10 @@ class VantageKeyframe extends HTMLElement {
   }
 
   destroy() {
+    this.parentElement.parentElement.removeEventListener(
+      'vantage:time-update',
+      this.timeUpdateEventListener
+    )
     const event = new CustomEvent('vantage:remove-keyframe', {
       bubbles: true,
       detail: {
@@ -665,7 +707,9 @@ class VantageKeyframe extends HTMLElement {
   }
 }
 
-customElements.define('vantage-renderer', VantageRenderer)
-customElements.define('vantage-projection', VantageProjection)
+customElements.define('vantage-renderer', VRenderer)
+customElements.define('vantage-model', VantageModel)
+customElements.define('vantage-map-controls', VantageMapControls)
+customElements.define('vantage-projection', VProjection)
 customElements.define('vantage-keyframe', VantageKeyframe)
 export default VantageRenderer

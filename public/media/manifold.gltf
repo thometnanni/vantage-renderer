@@ -1,0 +1,149 @@
+{
+  "asset": {
+    "generator": "glTF-Transform v3.10.1",
+    "version": "2.0"
+  },
+  "accessors": [
+    {
+      "name": "manifold indices",
+      "type": "SCALAR",
+      "componentType": 5125,
+      "count": 10320,
+      "bufferView": 0,
+      "byteOffset": 0
+    },
+    {
+      "name": "primitive indices of ID 1",
+      "type": "SCALAR",
+      "componentType": 5125,
+      "count": 1728,
+      "bufferView": 0,
+      "byteOffset": 0
+    },
+    {
+      "name": "primitive indices of ID 3",
+      "type": "SCALAR",
+      "componentType": 5125,
+      "count": 8592,
+      "bufferView": 0,
+      "byteOffset": 6912
+    },
+    {
+      "name": "POSITION",
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 1712,
+      "max": [
+        50,
+        50,
+        50
+      ],
+      "min": [
+        -50,
+        -50,
+        -50
+      ],
+      "bufferView": 1,
+      "byteOffset": 0
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 41288,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 41288,
+      "byteLength": 20544,
+      "byteStride": 12,
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "manifold_data.bin",
+      "byteLength": 61832
+    }
+  ],
+  "materials": [
+    {
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1,
+          1,
+          0,
+          1
+        ],
+        "roughnessFactor": 0.2
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 3
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 1
+        },
+        {
+          "attributes": {
+            "POSITION": 3
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 2
+        }
+      ],
+      "extensions": {
+        "EXT_mesh_manifold": {
+          "manifoldPrimitive": {
+            "indices": 0,
+            "mode": 4,
+            "attributes": {
+              "POSITION": 3
+            }
+          }
+        }
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "name": "wrapper",
+      "rotation": [
+        -0.7071067811865476,
+        0,
+        0,
+        0.7071067811865476
+      ],
+      "scale": [
+        0.001,
+        0.001,
+        0.001
+      ],
+      "children": [
+        1
+      ]
+    },
+    {
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "extensionsUsed": [
+    "EXT_mesh_manifold"
+  ]
+}
