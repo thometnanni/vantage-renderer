@@ -286,7 +286,7 @@ class VantageRenderer extends HTMLElement {
   }
 
   renderScene() {
-    this.renderer.render(this.scene, this.cameraOperator.camera)
+    // this.renderer.render(this.scene, this.cameraOperator.camera)
     this.renderer.clearDepth()
     this.cameraOperator.camera.layers.enable(2)
     this.renderer.render(this.scene, this.cameraOperator.camera)

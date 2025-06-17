@@ -103,6 +103,7 @@ function parseAttribute(name, value) {
 }
 
 async function setupScene(url) {
+  const isGlb = /\.glb$/.test(url)
   const meshes = unpackGroup(await loadScene(url))
 
   const base = new Group()
@@ -112,16 +113,25 @@ async function setupScene(url) {
   const lineMaterial = new LineBasicMaterial({ color: 0x000000 })
 
   meshes.forEach((mesh) => {
-    mesh.geometry.clearGroups()
-    mesh.geometry.addGroup(0, Infinity, 0)
-    mesh.material = [solidMaterial]
+    if (isGlb) {
+      if (!Array.isArray(mesh.material)) {
+        mesh.material = [mesh.material]
+      }
+    } else {
+      mesh.geometry.clearGroups()
+      mesh.geometry.addGroup(0, Infinity, 0)
+      mesh.material = [solidMaterial]
+    }
   })
 
   const edges = new Group()
-  edges.name = 'vantage:edges'
-  edges.add(
-    ...meshes.map((mesh) => new LineSegments(new EdgesGeometry(mesh.geometry), lineMaterial))
-  )
+  if (!isGlb) {
+    edges.name = 'vantage:edges'
+
+    edges.add(
+      ...meshes.map((mesh) => new LineSegments(new EdgesGeometry(mesh.geometry), lineMaterial))
+    )
+  }
 
   base.add(...meshes, edges)
 
