@@ -5,6 +5,7 @@ import Projection from './Projection'
 import { VantageRenderer as VRenderer } from './VantageRenderer'
 import { VantageModel } from './VantageModel'
 import { VantageProjection as VProjection } from './VantageProjection'
+import { VantageKeyframe as VKeyframe } from './VantageKeyframe'
 import { VantageMapControls } from './VantageMapControls'
 
 class VantageRenderer extends HTMLElement {
@@ -711,5 +712,5 @@ customElements.define('vantage-renderer', VRenderer)
 customElements.define('vantage-model', VantageModel)
 customElements.define('vantage-map-controls', VantageMapControls)
 customElements.define('vantage-projection', VProjection)
-customElements.define('vantage-keyframe', VantageKeyframe)
+customElements.define('vantage-keyframe', VKeyframe)
 export default VantageRenderer

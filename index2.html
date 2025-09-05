@@ -11,12 +11,10 @@
     <section>
       <vantage-renderer controls="edit" first-person="false" style="pointer-events: auto" time="0">
         <vantage-map-controls></vantage-map-controls>
-        <vantage-model
-          src="./media/scene.gltf"
-          position="0 -100 -10"
-          rotation="0 30 0"
-          scale="1"
-        ></vantage-model>
+        <vantage-model src="./media/scene.gltf" position="0 -100 -10" rotation="0 30 0" scale="1">
+          <vantage-keyframe attribute="position" value="0 -100 -10" time="0.0"></vantage-keyframe>
+          <vantage-keyframe attribute="position" value="0 -10 -10" time="5.0"></vantage-keyframe>
+        </vantage-model>
         <vantage-projection id="projection-3" src="./media/IMG_3271.jpeg" time="0.0">
           <!-- <vantage-keyframe
             position="38.89105577493452 1.596007992385184 15.467554987397904"
@@ -27,6 +25,16 @@
             screen="true"
             opacity=".8"
             time="0.0"
+          ></vantage-keyframe>
+          <vantage-keyframe
+            position="45 100 15.467554987397904"
+            rotation="0.023999999999999657 -1.5800000000000094 2.602834794405102e-17"
+            fov="53"
+            far="70"
+            layers="Buildings Ground"
+            screen="true"
+            opacity="1"
+            time="5.0"
           ></vantage-keyframe> -->
         </vantage-projection>
       </vantage-renderer>

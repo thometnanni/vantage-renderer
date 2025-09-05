@@ -11,10 +11,9 @@ class VantageObject extends HTMLElement {
 
   static observedAttributes = ['position', 'rotation', 'scale']
   async attributeChangedCallback(name, _oldValue, value) {
-    console.log(name, _oldValue, value)
     switch (name) {
       case 'position': {
-        const parsed = value.match(/([-0-9]+)/g).map((v) => +v)
+        const parsed = value.match(/([-.0-9]+)/g).map((v) => +v)
         const values = [0, 0, 0].map((v, i) => parsed[i] ?? v)
 
         this.object.position.set(...values)

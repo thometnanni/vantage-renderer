@@ -2,6 +2,7 @@ import { Scene, WebGLRenderer, Vector2, Vector3, Group, PerspectiveCamera } from
 import CameraOperator from './cameraOperator'
 import { loadTexture, parseAttribute, setupScene, setupLights, getSelectedKeyframe } from './utils'
 import Projection from './Projection'
+import { interpolate } from 'd3-interpolate'
 
 class VantageRenderer extends HTMLElement {
   root
@@ -21,6 +22,7 @@ class VantageRenderer extends HTMLElement {
   time = 0
   models = new Set()
   objects = new Set()
+  keyframes = new Set()
 
   constructor() {
     super()
@@ -48,6 +50,7 @@ class VantageRenderer extends HTMLElement {
     switch (name) {
       case 'time': {
         this.time = value
+        this.updateAttributes(value)
         this.dispatchEvent(
           new CustomEvent('vantage:time-update', {
             bubbles: true,
@@ -218,6 +221,45 @@ class VantageRenderer extends HTMLElement {
     //   this.hideFocusMarkerAndDisposeDrag()
     // }
     this.renderScene()
+  }
+
+  updateAttributes = (time) => {
+    const objects = new Map()
+    for (const keyframe of this.keyframes) {
+      const object = keyframe.parentElement
+      const attribute = keyframe.attribute
+
+      if (!objects.has(object)) objects.set(object, {})
+      const attributes = objects.get(object)
+      if (!attributes[attribute]) attributes[attribute] = []
+      attributes[attribute].push(keyframe)
+    }
+
+    for (const [object, attributes] of objects) {
+      for (const [attribute, keyframes] of Object.entries(attributes)) {
+        const sorted = keyframes.sort((a, b) => a.time - b.time)
+        const nextIndex = sorted.findIndex((keyframe) => keyframe.time > time)
+
+        if (nextIndex === -1) {
+          object.setAttribute(attribute, keyframes[keyframes.length - 1].value)
+          continue
+        }
+
+        if (nextIndex === 0) {
+          object.setAttribute(attribute, keyframes[0].value)
+          continue
+        }
+
+        const previous = sorted[nextIndex - 1]
+        const next = sorted[nextIndex]
+        const progress = (time - previous.time) / (next.time - previous.time)
+
+        const value = interpolate(previous.value, next.value)(progress)
+
+        object.setAttribute(attribute, value)
+      }
+    }
+    // console.log(time)
   }
 
   // handleCameraUpdate(focusProjection, globalTime) {
@@ -467,6 +509,13 @@ class VantageRenderer extends HTMLElement {
   }
   unregisterModel(model) {
     this.models.delete(model)
+  }
+
+  registerKeyframe(keyframe) {
+    this.keyframes.add(keyframe)
+  }
+  unregisterKeyframe(keyframe) {
+    this.keyframes.delete(keyframe)
   }
 }
 
