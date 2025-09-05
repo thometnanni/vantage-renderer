@@ -1,6 +1,7 @@
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { VantageObject } from './VantageObject'
 
-class VantageModel extends HTMLElement {
+class VantageModel extends VantageObject {
   vantageRenderer = null
   model = null
   scene = null
@@ -8,8 +9,11 @@ class VantageModel extends HTMLElement {
     super()
   }
 
-  static observedAttributes = ['src']
+  static get observedAttributes() {
+    return [...super.observedAttributes, 'src']
+  }
   async attributeChangedCallback(name, _oldValue, value) {
+    await super.attributeChangedCallback(name, _oldValue, value)
     switch (name) {
       case 'src': {
         this.removeModel()
@@ -23,9 +27,7 @@ class VantageModel extends HTMLElement {
   }
 
   connectedCallback() {
-    this.vantageRenderer = this.closest('vantage-renderer')
-    if (!this.vantageRenderer) throw 'VantageModel: missing <vantage-renderer> parent'
-    this.scene = this.vantageRenderer.scene
+    super.connectedCallback()
 
     this.addModel()
     this.vantageRenderer.registerModel(this)
@@ -50,14 +52,14 @@ class VantageModel extends HTMLElement {
   }
 
   addModel = () => {
-    if (this.scene == null || this.model == null) return
-    this.scene.add(this.model)
+    if (this.object == null || this.model == null) return
+    this.object.add(this.model)
     this.dispatchEvent(new CustomEvent('vantage:model:add', { bubbles: true, composed: true }))
   }
 
   removeModel = () => {
-    if (this.scene == null || this.model == null) return
-    this.scene.remove(this.model)
+    if (this.object == null || this.model == null) return
+    this.object.remove(this.model)
   }
 }
 

@@ -20,6 +20,7 @@ class VantageRenderer extends HTMLElement {
   initialCameraRotation = null
   time = 0
   models = new Set()
+  objects = new Set()
 
   constructor() {
     super()
@@ -452,6 +453,13 @@ class VantageRenderer extends HTMLElement {
   }
   unregisterProjection(projection) {
     this.projections.delete(projection)
+  }
+
+  registerObject(object) {
+    this.objects.add(object)
+  }
+  unregisterObject(object) {
+    this.objects.delete(object)
   }
 
   registerModel(model) {
