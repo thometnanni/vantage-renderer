@@ -2,18 +2,20 @@ import { loadTexture } from './utils'
 import ProjectionCamera from './ProjectionCamera'
 import { Mesh, SphereGeometry, Texture, Vector3, MeshPhongMaterial } from 'three'
 import ProjectedMaterial from 'three-projected-material'
+import { VantageObject } from './VantageObject'
 
-class VantageProjection extends HTMLElement {
-  vantageRenderer = null
-  scene = null
+class VantageProjection extends VantageObject {
   projection = null
   texture = new Texture()
   constructor() {
     super()
   }
 
-  static observedAttributes = ['src']
+  static get observedAttributes() {
+    return [...super.observedAttributes, 'src']
+  }
   async attributeChangedCallback(name, _oldValue, value) {
+    await super.attributeChangedCallback(name, _oldValue, value)
     switch (name) {
       case 'src': {
         // this.removeModel()
@@ -28,10 +30,7 @@ class VantageProjection extends HTMLElement {
   }
 
   connectedCallback() {
-    this.vantageRenderer = this.closest('vantage-renderer')
-    if (!this.vantageRenderer) throw 'VantageProjection: missing <vantage-renderer> parent'
-    this.scene = this.vantageRenderer.scene
-    this.renderer = this.vantageRenderer.renderer
+    super.connectedCallback()
 
     this.addProjection()
     this.vantageRenderer.registerProjection(this)
@@ -39,22 +38,25 @@ class VantageProjection extends HTMLElement {
 
   disconnectedCallback() {
     this.vantageRenderer?.unregisterProjection(this)
-    this.removeModel()
+    // this.removeModel()
   }
 
   addProjection = async () => {
-    // console.log('add')
     if (this.scene == null) return
 
     this.texture = await loadTexture(this.getAttribute('src'))
     // console.log(this.texture)
 
-    this.projection = new ProjectionCamera({ renderer: this.renderer, texture: this.texture })
+    this.projection = new ProjectionCamera({
+      renderer: this.vantageRenderer.renderer,
+      texture: this.texture
+    })
 
-    this.projection.position.set(100, 10, 0)
-    this.projection.rotation.set(-Math.PI / 8, -Math.PI / 2, 0, 'YXZ')
+    // this.projection.position.set(100, 10, 0)
+    // this.projection.rotation.set(-Math.PI / 8, -Math.PI / 2, 0, 'YXZ')
     // this.projection.updatePlane()
-    this.scene.add(this.projection)
+
+    this.object.add(this.projection)
 
     this.vantageRenderer.addEventListener('vantage:model:add', () => {
       this.projection.createDepthMap()
