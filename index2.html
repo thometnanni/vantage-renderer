@@ -21,29 +21,8 @@
           time="0.0"
           position="100 10 0"
         >
-          <vantage-keyframe attribute="rotation" value="-12.5 45 0" time="0"></vantage-keyframe>
-
-          <vantage-keyframe attribute="rotation" value="-12.5 450 0" time="10"></vantage-keyframe>
-          <!-- <vantage-keyframe
-            position="38.89105577493452 1.596007992385184 15.467554987397904"
-            rotation="0.023999999999999657 -1.5800000000000094 2.602834794405102e-17"
-            fov="53"
-            far="70"
-            layers="Buildings Ground"
-            screen="true"
-            opacity=".8"
-            time="0.0"
-          ></vantage-keyframe>
-          <vantage-keyframe
-            position="45 100 15.467554987397904"
-            rotation="0.023999999999999657 -1.5800000000000094 2.602834794405102e-17"
-            fov="53"
-            far="70"
-            layers="Buildings Ground"
-            screen="true"
-            opacity="1"
-            time="5.0"
-          ></vantage-keyframe> -->
+          <vantage-keyframe attribute="rotation" value="0 45 0" time="0"></vantage-keyframe>
+          <vantage-keyframe attribute="rotation" value="0 100 0" time="10"></vantage-keyframe>
         </vantage-projection>
       </vantage-renderer>
     </section>
@@ -93,7 +72,7 @@
       }
 
       document.addEventListener('DOMContentLoaded', () => {
-        isPlaying = true
+        isPlaying = false
         lastTimestamp = 0
         requestAnimationFrame(playLoop)
         document.getElementById('playButton').textContent = 'Pause'
