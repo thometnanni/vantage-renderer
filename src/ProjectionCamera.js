@@ -76,24 +76,22 @@ export default class ProjectionCamera extends Object3D {
 
     this.updatePlane()
 
-    this.renderTarget = new WebGLRenderTarget(2000, 2000)
-    this.renderTarget.texture.format = RGBAFormat
-    this.renderTarget.texture.minFilter = NearestFilter
-    this.renderTarget.texture.magFilter = NearestFilter
-    this.renderTarget.texture.generateMipmaps = false
-    this.renderTarget.stencilBuffer = false
+    this.renderTarget = new WebGLRenderTarget(1024, 1024)
+    // this.renderTarget.texture.format = RGBAFormat
+    // this.renderTarget.texture.minFilter = NearestFilter
+    // this.renderTarget.texture.magFilter = NearestFilter
+    // this.renderTarget.texture.generateMipmaps = false
+    // this.renderTarget.stencilBuffer = false
+    // this.renderTarget.depthBuffer = true
     this.renderTarget.depthTexture = new DepthTexture()
-    this.renderTarget.depthBuffer = true
-    this.renderTarget.depthTexture = new DepthTexture()
-    this.renderTarget.depthTexture.type = FloatType
+    // this.renderTarget.depthTexture.type = FloatType
 
     this.plane.material.push(
       new MeshBasicMaterial({
         transparent: true,
         opacity: 1,
-        color: 0xffffff,
+        color: 0x00ffbb,
         side: DoubleSide
-        // map: this.renderTarget.depthTexture
       })
     )
 
