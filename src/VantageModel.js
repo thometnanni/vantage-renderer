@@ -5,6 +5,7 @@ class VantageModel extends VantageObject {
   vantageRenderer = null
   model = null
   scene = null
+  isProjectionTarget = true
   constructor() {
     super()
   }
@@ -12,8 +13,9 @@ class VantageModel extends VantageObject {
   static get observedAttributes() {
     return [...super.observedAttributes, 'src']
   }
-  async attributeChangedCallback(name, _oldValue, value) {
-    await super.attributeChangedCallback(name, _oldValue, value)
+  async attributeChangedCallback(name, oldValue, value) {
+    await super.attributeChangedCallback(name, oldValue, value)
+    if (oldValue === value) return
     switch (name) {
       case 'src': {
         this.removeModel()
@@ -34,6 +36,8 @@ class VantageModel extends VantageObject {
   }
 
   disconnectedCallback() {
+    super.disconnectedCallback()
+
     this.removeModel()
     this.vantageRenderer.unregisterModel(this)
   }

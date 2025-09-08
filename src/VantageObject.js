@@ -4,13 +4,16 @@ class VantageObject extends HTMLElement {
   vantageRenderer = null
   model = null
   scene = null
+  modified = false
   object = new Group()
+
   constructor() {
     super()
   }
 
   static observedAttributes = ['position', 'rotation', 'scale']
-  async attributeChangedCallback(name, _oldValue, value) {
+  async attributeChangedCallback(name, oldValue, value) {
+    if (oldValue === value) return
     switch (name) {
       case 'position': {
         const parsed = value.match(/([-.0-9]+)/g).map((v) => +v)
@@ -20,13 +23,13 @@ class VantageObject extends HTMLElement {
         break
       }
       case 'rotation': {
-        const parsed = value.match(/([-0-9]+)/g).map((v) => (+v * Math.PI) / 180)
+        const parsed = value.match(/([-.0-9]+)/g).map((v) => (+v * Math.PI) / 180)
         const values = [0, 0, 0].map((v, i) => parsed[i] ?? v)
         this.object.rotation.set(...values, 'YXZ')
         break
       }
       case 'scale': {
-        const parsed = value.match(/([-0-9]+)/g).map((v) => +v)
+        const parsed = value.match(/([-.0-9]+)/g).map((v) => +v)
         const values = [1, 1, 1].map((v, i) => parsed[i] ?? parsed[0] ?? v)
         this.object.scale.set(...values)
         break
@@ -34,6 +37,8 @@ class VantageObject extends HTMLElement {
       default:
         break
     }
+
+    this.modified = true
   }
 
   connectedCallback() {
@@ -49,6 +54,8 @@ class VantageObject extends HTMLElement {
     this.scene.remove(this.object)
     this.vantageRenderer.unregisterObject(this)
   }
+
+  update() {}
 }
 
 export { VantageObject }
