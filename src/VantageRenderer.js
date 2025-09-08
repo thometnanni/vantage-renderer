@@ -220,6 +220,14 @@ class VantageRenderer extends HTMLElement {
     // } else {
     //   this.hideFocusMarkerAndDisposeDrag()
     // }
+
+    for (const projection of this.projections) {
+      projection.update()
+    }
+
+    for (const object of this.objects) {
+      object.modified = false
+    }
     this.renderScene()
   }
 

@@ -8,7 +8,9 @@ import {
   LineSegments,
   EdgesGeometry,
   AmbientLight,
-  DirectionalLight
+  DirectionalLight,
+  Matrix4,
+  Frustum
 } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
@@ -188,6 +190,26 @@ function getScene(object3D) {
   return object3D.type === 'Scene' ? object3D : null
 }
 
+function getCameraFrustum(camera) {
+  camera.updateMatrixWorld()
+  camera.updateProjectionMatrix()
+
+  const matrix = new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+
+  const frustum = new Frustum()
+  frustum.setFromProjectionMatrix(matrix)
+
+  return frustum
+}
+
+function getMeshes(object3d) {
+  const meshes = []
+  object3d.traverse((child) => {
+    if (child.isMesh) meshes.push(child)
+  })
+  return meshes
+}
+
 export {
   getScene,
   loadTexture,
@@ -196,5 +218,7 @@ export {
   parseAttribute,
   setupScene,
   setupLights,
-  getSelectedKeyframe
+  getSelectedKeyframe,
+  getCameraFrustum,
+  getMeshes
 }

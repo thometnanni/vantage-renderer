@@ -1,12 +1,14 @@
-import { loadTexture } from './utils'
+import { getCameraFrustum, loadTexture, getMeshes } from './utils'
 import ProjectionCamera from './ProjectionCamera'
 import { Mesh, SphereGeometry, Texture, Vector3, MeshPhongMaterial } from 'three'
 import ProjectedMaterial from 'three-projected-material'
 import { VantageObject } from './VantageObject'
+import { MeshBasicMaterial } from 'three'
 
 class VantageProjection extends VantageObject {
   projection = null
-  texture = new Texture()
+  frustum
+  texture
   constructor() {
     super()
   }
@@ -14,14 +16,14 @@ class VantageProjection extends VantageObject {
   static get observedAttributes() {
     return [...super.observedAttributes, 'src']
   }
-  async attributeChangedCallback(name, _oldValue, value) {
-    await super.attributeChangedCallback(name, _oldValue, value)
+  async attributeChangedCallback(name, oldValue, value) {
+    await super.attributeChangedCallback(name, oldValue, value)
+    if (oldValue === value) return
     switch (name) {
       case 'src': {
-        // this.removeModel()
-        console.log('src', value)
+        this.removeProjection()
         this.texture = await loadTexture(value)
-        // this.addModel()
+        this.addProjection()
         break
       }
       default:
@@ -37,19 +39,24 @@ class VantageProjection extends VantageObject {
   }
 
   disconnectedCallback() {
+    super.disconnectedCallback()
+
+    this.removeProjection()
     this.vantageRenderer?.unregisterProjection(this)
-    // this.removeModel()
   }
 
   addProjection = async () => {
-    if (this.scene == null) return
+    if (this.scene == null || this.texture == null) return
 
-    this.texture = await loadTexture(this.getAttribute('src'))
-    // console.log(this.texture)
+    // this.texture = await loadTexture(this.getAttribute('src'))
+
+    const width = this.texture.image.videoWidth ?? this.texture.image.width
+    const height = this.texture.image.videoHeight ?? this.texture.image.height
 
     this.projection = new ProjectionCamera({
       renderer: this.vantageRenderer.renderer,
-      texture: this.texture
+      texture: this.texture,
+      ratio: width / height
     })
 
     // this.projection.position.set(100, 10, 0)
@@ -62,26 +69,25 @@ class VantageProjection extends VantageObject {
       this.projection.createDepthMap()
       this.vantageRenderer.models.forEach((vantageModel) => {
         console.log(vantageModel.model)
-        vantageModel.model.children
-          .filter(({ isMesh }) => isMesh)
-          .forEach((mesh) => {
-            mesh.geometry.clearGroups()
-            mesh.geometry.addGroup(0, Infinity, 0)
-            mesh.material = [new MeshPhongMaterial({ color: 0xeeeeee })]
-            mesh.geometry.addGroup(0, Infinity, 1)
-            const material = new ProjectedMaterial({
-              camera: this.projection.camera,
-              texture: this.texture,
-              transparent: true,
-              opacity: 1,
-              depthMap: this.projection.renderTarget.depthTexture
-            })
-
-            // this.material[layer].project(this.#layers[layer])
-            mesh.material.push(material)
-
-            material.project(mesh)
+        vantageModel.model.traverse((mesh) => {
+          if (!mesh.isMesh) return
+          mesh.geometry.clearGroups()
+          mesh.geometry.addGroup(0, Infinity, 0)
+          mesh.material = [new MeshPhongMaterial({ color: 0xeeeeee })]
+          mesh.geometry.addGroup(0, Infinity, 1)
+          const material = new ProjectedMaterial({
+            camera: this.projection.camera,
+            texture: this.texture,
+            transparent: true,
+            opacity: 1,
+            depthMap: this.projection.renderTarget.depthTexture
           })
+
+          // this.material[layer].project(this.#layers[layer])
+          mesh.material.push(material)
+
+          material.project(mesh)
+        })
       })
 
       const material = new ProjectedMaterial({
@@ -101,10 +107,43 @@ class VantageProjection extends VantageObject {
 
     // sphere.position.set(100, 100, 0)
 
-    console.log(
-      this.projection.plane.position,
-      this.projection.plane.getWorldPosition(new Vector3())
-    )
+    // console.log(
+    //   this.projection.plane.position,
+    //   this.projection.plane.getWorldPosition(new Vector3())
+    // )
+  }
+
+  removeProjection() {}
+
+  update() {
+    if (this.projection == null) return
+    if (this.modified || this.frustum == null) {
+      this.frustum = getCameraFrustum(this.projection.camera)
+    }
+
+    const needsProjectionUpdate =
+      this.modified ||
+      [...this.vantageRenderer.models].find(
+        (model) =>
+          model.isProjectionTarget &&
+          model.modified &&
+          getMeshes(model.model).find((mesh) => this.frustum.intersectsObject(mesh))
+      )
+
+    if (needsProjectionUpdate) {
+      this.projection.createDepthMap()
+
+      const targets = [...this.vantageRenderer.models]
+        .filter((model) => model.isProjectionTarget)
+        .map((model) =>
+          getMeshes(model.model).filter((mesh) => this.frustum.intersectsObject(mesh))
+        )
+        .flat()
+
+      targets.forEach((target) => {
+        target.material.forEach((material) => material.project?.(target))
+      })
+    }
   }
 }
 
