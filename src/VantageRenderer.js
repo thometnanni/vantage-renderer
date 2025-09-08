@@ -23,6 +23,7 @@ class VantageRenderer extends HTMLElement {
   models = new Set()
   objects = new Set()
   keyframes = new Set()
+  needsUpdateAttributes = false
 
   constructor() {
     super()
@@ -50,7 +51,7 @@ class VantageRenderer extends HTMLElement {
     switch (name) {
       case 'time': {
         this.time = value
-        this.updateAttributes(value)
+        this.needsUpdateAttributes = true
         this.dispatchEvent(
           new CustomEvent('vantage:time-update', {
             bubbles: true,
@@ -211,6 +212,11 @@ class VantageRenderer extends HTMLElement {
   }
 
   update = () => {
+    if (this.needsUpdateAttributes) {
+      this.updateAttributes()
+      this.needsUpdateAttributes = false
+    }
+
     // const globalTime = parseFloat(this.getAttribute('time')) || 0
     // const focusProjection = Object.values(this.projections).find((p) => p.focus)
 
@@ -231,7 +237,7 @@ class VantageRenderer extends HTMLElement {
     this.renderScene()
   }
 
-  updateAttributes = (time) => {
+  updateAttributes = () => {
     const objects = new Map()
     for (const keyframe of this.keyframes) {
       const object = keyframe.parentElement
@@ -246,7 +252,7 @@ class VantageRenderer extends HTMLElement {
     for (const [object, attributes] of objects) {
       for (const [attribute, keyframes] of Object.entries(attributes)) {
         const sorted = keyframes.sort((a, b) => a.time - b.time)
-        const nextIndex = sorted.findIndex((keyframe) => keyframe.time > time)
+        const nextIndex = sorted.findIndex((keyframe) => keyframe.time > this.time)
 
         if (nextIndex === -1) {
           object.setAttribute(attribute, keyframes[keyframes.length - 1].value)
@@ -260,7 +266,7 @@ class VantageRenderer extends HTMLElement {
 
         const previous = sorted[nextIndex - 1]
         const next = sorted[nextIndex]
-        const progress = (time - previous.time) / (next.time - previous.time)
+        const progress = (this.time - previous.time) / (next.time - previous.time)
 
         const value = interpolate(previous.value, next.value)(progress)
 
@@ -521,9 +527,11 @@ class VantageRenderer extends HTMLElement {
 
   registerKeyframe(keyframe) {
     this.keyframes.add(keyframe)
+    this.needsUpdateAttributes = true
   }
   unregisterKeyframe(keyframe) {
     this.keyframes.delete(keyframe)
+    this.needsUpdateAttributes = true
   }
 }
 
