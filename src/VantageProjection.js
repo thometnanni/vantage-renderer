@@ -61,28 +61,7 @@ class VantageProjection extends VantageObject {
 
     this.object.add(this.projection)
 
-    this.vantageRenderer.addEventListener('vantage:model:add', () => {
-      this.projection.createDepthMap()
-      this.vantageRenderer.models.forEach((vantageModel) => {
-        if (!vantageModel.model) return
-        vantageModel.model.traverse((object) => {
-          if (!object.isMesh) return
-
-          object.geometry.addGroup(0, Infinity, object.geometry.groups.length)
-
-          this.materials[object] = new ProjectedMaterial({
-            camera: this.projection.camera,
-            texture: this.texture,
-            transparent: true,
-            opacity: 1,
-            depthMap: this.projection.renderTarget.depthTexture
-          })
-
-          object.material.push(this.materials[object])
-          this.materials[object].project(object)
-        })
-      })
-    })
+    // this.vantageRenderer.addEventListener('vantage:model:add', () => {})
 
     const material = new ProjectedMaterial({
       camera: this.projection.camera,
@@ -107,7 +86,35 @@ class VantageProjection extends VantageObject {
       this.frustum = getCameraFrustum(this.projection.camera)
     }
 
+    if (this.vantageRenderer.needsProjectionMaterialUpdate) {
+      this.projection.createDepthMap()
+      this.vantageRenderer.models.forEach((vantageModel) => {
+        if (!vantageModel.model) return
+        vantageModel.model.traverse((object) => {
+          if (!object.isMesh) return
+          if (object.material.includes(this.materials.get(object))) return
+          object.geometry.addGroup(0, Infinity, object.geometry.groups.length)
+
+          this.materials.set(
+            object,
+            new ProjectedMaterial({
+              camera: this.projection.camera,
+              texture: this.texture,
+              transparent: true,
+              opacity: 1,
+              depthMap: this.projection.renderTarget.depthTexture
+            })
+          )
+
+          object.material.push(this.materials.get(object))
+
+          this.materials.get(object).project(object)
+        })
+      })
+    }
+
     const needsProjectionUpdate =
+      this.vantageRenderer.needsProjectionDepthMapUpdate ||
       this.modified ||
       [...this.vantageRenderer.models].find(
         (model) =>

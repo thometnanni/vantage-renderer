@@ -11,6 +11,16 @@
     <section>
       <vantage-renderer controls="edit" first-person="false" style="pointer-events: auto" time="0">
         <vantage-map-controls></vantage-map-controls>
+        <vantage-model
+          src="./media/textured.glb"
+          position="0 -100 -10"
+          rotation="0 30 0"
+          scale="100"
+        >
+          <vantage-keyframe attribute="position" value="0 -100 -10" time="0.0"></vantage-keyframe>
+          <vantage-keyframe attribute="position" value="0 -10 -10" time="5.0"></vantage-keyframe>
+        </vantage-model>
+
         <vantage-model src="./media/scene.gltf" position="0 -100 -10" rotation="0 30 0" scale="1">
           <vantage-keyframe attribute="position" value="0 -100 -10" time="0.0"></vantage-keyframe>
           <vantage-keyframe attribute="position" value="0 -10 -10" time="5.0"></vantage-keyframe>

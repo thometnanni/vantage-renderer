@@ -25,6 +25,8 @@ class VantageRenderer extends HTMLElement {
   keyframes = new Set()
   needsAttributesUpdate = false
   needsMaterialIndexUpdate = false
+  needsProjectionMaterialUpdate = false
+  needsProjectionDepthMapUpdate = false
 
   constructor() {
     super()
@@ -240,6 +242,7 @@ class VantageRenderer extends HTMLElement {
       object.modified = false
     }
     this.needsMaterialIndexUpdate = false
+    this.needsProjectionMaterialUpdate = false
     this.renderScene()
   }
 

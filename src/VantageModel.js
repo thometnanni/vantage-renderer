@@ -78,12 +78,14 @@ class VantageModel extends VantageObject {
     }
 
     this.object.add(this.model)
-    this.dispatchEvent(new CustomEvent('vantage:model:add', { bubbles: true, composed: true }))
+    this.vantageRenderer.needsProjectionMaterialUpdate = true
+    // this.dispatchEvent(new CustomEvent('vantage:model:add', { bubbles: true, composed: true }))
   }
 
   removeModel = () => {
     if (this.object == null || this.model == null) return
     this.object.remove(this.model)
+    this.vantageRenderer.needsProjectionDepthMapUpdate = true
   }
 
   update = () => {
@@ -95,7 +97,7 @@ class VantageModel extends VantageObject {
           ...this.baseMaterial,
           ...[...this.vantageRenderer.projections]
             .sort((a, b) => a.index - b.index)
-            .map(({ materials }) => materials[object])
+            .map(({ materials }) => materials.get(object))
         ]
       })
     }
