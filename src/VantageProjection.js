@@ -9,6 +9,8 @@ class VantageProjection extends VantageObject {
   projection = null
   frustum
   texture
+  needsIndexUpdate = false
+  materials = new Map()
   constructor() {
     super()
   }
@@ -33,7 +35,6 @@ class VantageProjection extends VantageObject {
 
   connectedCallback() {
     super.connectedCallback()
-
     this.addProjection()
     this.vantageRenderer.registerProjection(this)
   }
@@ -45,9 +46,8 @@ class VantageProjection extends VantageObject {
     this.vantageRenderer?.unregisterProjection(this)
   }
 
-  addProjection = async () => {
+  addProjection = () => {
     if (this.scene == null || this.texture == null) return
-
     // this.texture = await loadTexture(this.getAttribute('src'))
 
     const width = this.texture.image.videoWidth ?? this.texture.image.width
@@ -68,14 +68,12 @@ class VantageProjection extends VantageObject {
     this.vantageRenderer.addEventListener('vantage:model:add', () => {
       this.projection.createDepthMap()
       this.vantageRenderer.models.forEach((vantageModel) => {
-        console.log(vantageModel.model)
-        vantageModel.model.traverse((mesh) => {
-          if (!mesh.isMesh) return
-          mesh.geometry.clearGroups()
-          mesh.geometry.addGroup(0, Infinity, 0)
-          mesh.material = [new MeshPhongMaterial({ color: 0xeeeeee })]
-          mesh.geometry.addGroup(0, Infinity, 1)
-          const material = new ProjectedMaterial({
+        vantageModel.model.traverse((object) => {
+          if (!object.isMesh) return
+
+          object.geometry.addGroup(0, Infinity, object.geometry.groups.length)
+
+          this.materials[object] = new ProjectedMaterial({
             camera: this.projection.camera,
             texture: this.texture,
             transparent: true,
@@ -83,10 +81,8 @@ class VantageProjection extends VantageObject {
             depthMap: this.projection.renderTarget.depthTexture
           })
 
-          // this.material[layer].project(this.#layers[layer])
-          mesh.material.push(material)
-
-          material.project(mesh)
+          object.material.push(this.materials[object])
+          this.materials[object].project(object)
         })
       })
 
@@ -101,16 +97,6 @@ class VantageProjection extends VantageObject {
       this.projection.plane.material.push(material)
       material.project(this.projection.plane)
     })
-
-    // const sphere = new Mesh(new SphereGeometry(25))
-    // this.scene.add(sphere)
-
-    // sphere.position.set(100, 100, 0)
-
-    // console.log(
-    //   this.projection.plane.position,
-    //   this.projection.plane.getWorldPosition(new Vector3())
-    // )
   }
 
   removeProjection() {}

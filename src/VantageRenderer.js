@@ -23,7 +23,8 @@ class VantageRenderer extends HTMLElement {
   models = new Set()
   objects = new Set()
   keyframes = new Set()
-  needsUpdateAttributes = false
+  needsAttributesUpdate = false
+  needsMaterialIndexUpdate = false
 
   constructor() {
     super()
@@ -51,7 +52,7 @@ class VantageRenderer extends HTMLElement {
     switch (name) {
       case 'time': {
         this.time = value
-        this.needsUpdateAttributes = true
+        this.needsAttributesUpdate = true
         this.dispatchEvent(
           new CustomEvent('vantage:time-update', {
             bubbles: true,
@@ -212,9 +213,9 @@ class VantageRenderer extends HTMLElement {
   }
 
   update = () => {
-    if (this.needsUpdateAttributes) {
+    if (this.needsAttributesUpdate) {
       this.updateAttributes()
-      this.needsUpdateAttributes = false
+      this.needsAttributesUpdate = false
     }
 
     // const globalTime = parseFloat(this.getAttribute('time')) || 0
@@ -231,9 +232,14 @@ class VantageRenderer extends HTMLElement {
       projection.update()
     }
 
+    for (const model of this.models) {
+      model.update()
+    }
+
     for (const object of this.objects) {
       object.modified = false
     }
+    this.needsMaterialIndexUpdate = false
     this.renderScene()
   }
 
@@ -274,6 +280,17 @@ class VantageRenderer extends HTMLElement {
       }
     }
     // console.log(time)
+  }
+
+  indexProjections = () => {
+    const projectionNodes = [...this.children].filter(
+      (c) => c.constructor.name === 'VantageProjection'
+    )
+    this.projections.forEach((p) => {
+      p.index = projectionNodes.indexOf(p)
+    })
+
+    this.needsMaterialIndexUpdate = true
   }
 
   // handleCameraUpdate(focusProjection, globalTime) {
@@ -506,9 +523,13 @@ class VantageRenderer extends HTMLElement {
 
   registerProjection(projection) {
     this.projections.add(projection)
+
+    this.indexProjections()
   }
   unregisterProjection(projection) {
     this.projections.delete(projection)
+
+    this.indexProjections()
   }
 
   registerObject(object) {
@@ -527,11 +548,11 @@ class VantageRenderer extends HTMLElement {
 
   registerKeyframe(keyframe) {
     this.keyframes.add(keyframe)
-    this.needsUpdateAttributes = true
+    this.needsAttributesUpdate = true
   }
   unregisterKeyframe(keyframe) {
     this.keyframes.delete(keyframe)
-    this.needsUpdateAttributes = true
+    this.needsAttributesUpdate = true
   }
 }
 

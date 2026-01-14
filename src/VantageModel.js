@@ -1,11 +1,15 @@
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { VantageObject } from './VantageObject'
+import { MeshPhongMaterial } from 'three'
 
 class VantageModel extends VantageObject {
   vantageRenderer = null
   model = null
   scene = null
   isProjectionTarget = true
+  useSourceMaterial = false
+  baseMaterial = null
+
   constructor() {
     super()
   }
@@ -57,6 +61,22 @@ class VantageModel extends VantageObject {
 
   addModel = () => {
     if (this.object == null || this.model == null) return
+
+    if (this.isProjectionTarget) {
+      this.model.traverse((object) => {
+        if (!object.isMesh) return
+
+        if (this.useSourceMaterial) {
+          this.baseMaterial = [object.material].flat()
+        } else {
+          object.geometry.clearGroups()
+          object.geometry.addGroup(0, Infinity, 0)
+          this.baseMaterial = [new MeshPhongMaterial({ color: 0xeeeeee })]
+        }
+        object.material = [...this.baseMaterial]
+      })
+    }
+
     this.object.add(this.model)
     this.dispatchEvent(new CustomEvent('vantage:model:add', { bubbles: true, composed: true }))
   }
@@ -64,6 +84,21 @@ class VantageModel extends VantageObject {
   removeModel = () => {
     if (this.object == null || this.model == null) return
     this.object.remove(this.model)
+  }
+
+  update = () => {
+    if (this.model == null) return
+    if (this.isProjectionTarget && this.vantageRenderer.needsMaterialIndexUpdate) {
+      this.model.traverse((object) => {
+        if (!object.isMesh) return
+        object.material = [
+          ...this.baseMaterial,
+          ...[...this.vantageRenderer.projections]
+            .sort((a, b) => a.index - b.index)
+            .map(({ materials }) => materials[object])
+        ]
+      })
+    }
   }
 }
 
