@@ -204,6 +204,8 @@ function getCameraFrustum(camera) {
 
 function getMeshes(object3d) {
   const meshes = []
+  if (!object3d) return meshes
+
   object3d.traverse((child) => {
     if (child.isMesh) meshes.push(child)
   })
