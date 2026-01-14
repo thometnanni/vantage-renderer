@@ -64,6 +64,7 @@ class VantageProjection extends VantageObject {
     this.vantageRenderer.addEventListener('vantage:model:add', () => {
       this.projection.createDepthMap()
       this.vantageRenderer.models.forEach((vantageModel) => {
+        if (!vantageModel.model) return
         vantageModel.model.traverse((object) => {
           if (!object.isMesh) return
 
