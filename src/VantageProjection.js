@@ -59,10 +59,6 @@ class VantageProjection extends VantageObject {
       ratio: width / height
     })
 
-    // this.projection.position.set(100, 10, 0)
-    // this.projection.rotation.set(-Math.PI / 8, -Math.PI / 2, 0, 'YXZ')
-    // this.projection.updatePlane()
-
     this.object.add(this.projection)
 
     this.vantageRenderer.addEventListener('vantage:model:add', () => {
@@ -85,21 +81,24 @@ class VantageProjection extends VantageObject {
           this.materials[object].project(object)
         })
       })
-
-      const material = new ProjectedMaterial({
-        camera: this.projection.camera,
-        texture: this.texture,
-        transparent: true,
-        opacity: 1,
-        depthMap: this.projection.renderTarget.depthTexture
-      })
-      this.projection.plane.geometry.addGroup(0, Infinity, 1)
-      this.projection.plane.material.push(material)
-      material.project(this.projection.plane)
     })
+
+    const material = new ProjectedMaterial({
+      camera: this.projection.camera,
+      texture: this.texture,
+      transparent: true,
+      opacity: 1,
+      depthMap: this.projection.renderTarget.depthTexture
+    })
+    this.projection.plane.geometry.addGroup(0, Infinity, 1)
+    this.projection.plane.material.push(material)
+    material.project(this.projection.plane)
   }
 
-  removeProjection() {}
+  removeProjection() {
+    if (this.projection == null) return
+    this.projection.cameraHelper.removeFromParent()
+  }
 
   update() {
     if (this.projection == null) return
