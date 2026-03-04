@@ -13,7 +13,6 @@ import {
 import { MapControls } from 'three/addons/controls/MapControls'
 import { PointerLockControls } from './CustomPointerLockControls'
 import { DragControls } from 'three/addons/controls/DragControls.js'
-import { getSelectedKeyframe } from './utils'
 
 export default class CameraOperator extends EventDispatcher {
   mapCamera = new PerspectiveCamera(60, innerWidth / innerHeight, 1, 10000)
@@ -235,16 +234,6 @@ export default class CameraOperator extends EventDispatcher {
 
     this.fpControls.detachCamera()
 
-    const rendererEl = document.querySelector('vantage-renderer')
-    if (!rendererEl) return
-    const focusedProjection = Array.from(rendererEl.querySelectorAll('vantage-projection')).find(
-      (p) => p.hasAttribute('focus') && p.getAttribute('focus') !== 'false'
-    )
-    if (!focusedProjection) return
-
-    const keyframe = getSelectedKeyframe(focusedProjection)
-    if (!keyframe) return
-    keyframe.setAttribute('fov', this.#focusCamera.fov)
     this.dispatchEvent({
       type: 'vantage:update-fov',
       value: this.#focusCamera.fov
