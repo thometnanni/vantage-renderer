@@ -1,14 +1,7 @@
-import {
-  PerspectiveCamera,
-  CameraHelper,
-  WebGLRenderTarget,
-  DepthTexture,
-  MeshDepthMaterial
-} from 'three'
+import { PerspectiveCamera, WebGLRenderTarget, DepthTexture, MeshDepthMaterial } from 'three'
 import ProjectedMaterial from 'three-projected-material'
 
 export class VantageProjection extends PerspectiveCamera {
-  cameraHelper
   renderTarget
   texture = null
   _materials = new Map()
@@ -21,22 +14,10 @@ export class VantageProjection extends PerspectiveCamera {
   constructor({ texture, fov = 60, near = 1, far = 200, renderTargetSize = 1024 } = {}) {
     super(fov, 1, near, far)
 
-    this.cameraHelper = new CameraHelper(this)
-    this.cameraHelper.layers.set(2)
-
     this.renderTarget = new WebGLRenderTarget(renderTargetSize, renderTargetSize)
     this.renderTarget.depthTexture = new DepthTexture()
 
     if (texture) this.setTexture(texture)
-
-    this.addEventListener('added', () => {
-      const scene = this._getScene()
-      if (scene) scene.add(this.cameraHelper)
-    })
-
-    this.addEventListener('removed', () => {
-      this.cameraHelper.removeFromParent()
-    })
   }
 
   setTexture(texture) {
@@ -45,7 +26,6 @@ export class VantageProjection extends PerspectiveCamera {
     const h = texture.image?.videoHeight ?? texture.image?.height ?? 1
     this.aspect = w / h
     this.updateProjectionMatrix()
-    this.cameraHelper.update()
   }
 
   project(object) {
@@ -78,7 +58,6 @@ export class VantageProjection extends PerspectiveCamera {
   dispose() {
     this.renderTarget.depthTexture.dispose()
     this.renderTarget.dispose()
-    this.cameraHelper.dispose()
     for (const mat of this._materials.values()) {
       mat.dispose()
     }
@@ -118,11 +97,5 @@ export class VantageProjection extends PerspectiveCamera {
     renderer.render(scene, this)
     renderer.setRenderTarget(null)
     scene.overrideMaterial = null
-  }
-
-  _getScene() {
-    let obj = this
-    while (obj.parent) obj = obj.parent
-    return obj.type === 'Scene' ? obj : null
   }
 }

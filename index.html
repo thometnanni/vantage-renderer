@@ -99,7 +99,14 @@
       scene.add(projection2)
       projection2.project(modelGroup)
 
-      // Enable camera helpers on layer 2
+      const projectionHelper1 = new THREE.CameraHelper(projection1)
+      projectionHelper1.layers.set(2)
+      scene.add(projectionHelper1)
+
+      const projectionHelper2 = new THREE.CameraHelper(projection2)
+      projectionHelper2.layers.set(2)
+      scene.add(projectionHelper2)
+
       camera.layers.enable(2)
 
       // Render loop
