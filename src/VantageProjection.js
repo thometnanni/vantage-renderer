@@ -1,143 +1,145 @@
-import { getCameraFrustum, loadTexture, getMeshes } from './utils'
-import ProjectionCamera from './ProjectionCamera'
-import { Mesh, SphereGeometry, Texture, Vector3, MeshPhongMaterial } from 'three'
+import {
+  PerspectiveCamera,
+  CameraHelper,
+  WebGLRenderTarget,
+  DepthTexture,
+  MeshDepthMaterial
+} from 'three'
 import ProjectedMaterial from 'three-projected-material'
-import { VantageObject } from './VantageObject'
-import { MeshBasicMaterial } from 'three'
+import { loadTexture } from './utils'
 
-class VantageProjection extends VantageObject {
-  projection = null
-  frustum
-  texture
-  needsIndexUpdate = false
-  materials = new Map()
-  constructor() {
-    super()
+export class VantageProjection extends PerspectiveCamera {
+  cameraHelper
+  renderTarget
+  texture = null
+  _materials = new Map()
+  _pendingObjects = []
+  _depthMaterial = new MeshDepthMaterial({
+    polygonOffset: true,
+    polygonOffsetFactor: 1.0,
+    polygonOffsetUnits: 1.0
+  })
+
+  constructor({ texture, src, fov = 60, near = 1, far = 200, renderTargetSize = 1024 } = {}) {
+    super(fov, 1, near, far)
+
+    this.cameraHelper = new CameraHelper(this)
+    this.cameraHelper.layers.set(2)
+
+    this.renderTarget = new WebGLRenderTarget(renderTargetSize, renderTargetSize)
+    this.renderTarget.depthTexture = new DepthTexture()
+
+    if (texture) {
+      this.setTexture(texture)
+    } else if (src) {
+      this.loadTexture(src)
+    }
+
+    this.addEventListener('added', () => {
+      const scene = this._getScene()
+      if (scene) scene.add(this.cameraHelper)
+    })
+
+    this.addEventListener('removed', () => {
+      this.cameraHelper.removeFromParent()
+    })
   }
 
-  static get observedAttributes() {
-    return [...super.observedAttributes, 'src']
+  setTexture(texture) {
+    this.texture = texture
+    const w = texture.image?.videoWidth ?? texture.image?.width ?? 1
+    const h = texture.image?.videoHeight ?? texture.image?.height ?? 1
+    this.aspect = w / h
+    this.updateProjectionMatrix()
+    this.cameraHelper.update()
+    for (const obj of this._pendingObjects.splice(0)) this.project(obj)
   }
-  async attributeChangedCallback(name, oldValue, value) {
-    await super.attributeChangedCallback(name, oldValue, value)
-    if (oldValue === value) return
-    switch (name) {
-      case 'src': {
-        this.removeProjection()
-        this.texture = await loadTexture(value)
-        this.addProjection()
-        break
-      }
-      default:
-        break
+
+  async loadTexture(src) {
+    const texture = await loadTexture(src)
+    this.setTexture(texture)
+    return texture
+  }
+
+  project(object) {
+    if (!this.texture) {
+      this._pendingObjects.push(object)
+      return
+    }
+    object.traverse((child) => {
+      if (!child.isMesh) return
+      this._applyMaterial(child)
+    })
+  }
+
+  unproject(object) {
+    object.traverse((child) => {
+      if (!child.isMesh) return
+      const mat = this._materials.get(child)
+      if (!mat) return
+      const idx = child.material.indexOf(mat)
+      if (idx !== -1) child.material.splice(idx, 1)
+      this._materials.delete(child)
+      mat.dispose()
+    })
+  }
+
+  update(renderer, scene) {
+    if (!this.texture || this._materials.size === 0) return
+    this._createDepthMap(renderer, scene)
+    for (const [mesh, mat] of this._materials) {
+      mat.project(mesh)
     }
   }
 
-  connectedCallback() {
-    super.connectedCallback()
-    this.addProjection()
-    this.vantageRenderer.registerProjection(this)
+  dispose() {
+    this.renderTarget.depthTexture.dispose()
+    this.renderTarget.dispose()
+    this.cameraHelper.dispose()
+    for (const mat of this._materials.values()) {
+      mat.dispose()
+    }
+    this._materials.clear()
   }
 
-  disconnectedCallback() {
-    super.disconnectedCallback()
+  _applyMaterial(mesh) {
+    if (this._materials.has(mesh)) return
+    if (!this.texture) return
 
-    this.removeProjection()
-    this.vantageRenderer?.unregisterProjection(this)
-  }
+    if (!Array.isArray(mesh.material)) {
+      mesh.material = [mesh.material]
+    }
+    if (mesh.geometry.groups.length === 0) {
+      mesh.geometry.addGroup(0, Infinity, 0)
+    }
 
-  addProjection = () => {
-    if (this.scene == null || this.texture == null) return
-    // this.texture = await loadTexture(this.getAttribute('src'))
+    const materialIndex = mesh.material.length
+    mesh.geometry.addGroup(0, Infinity, materialIndex)
 
-    const width = this.texture.image.videoWidth ?? this.texture.image.width
-    const height = this.texture.image.videoHeight ?? this.texture.image.height
-
-    this.projection = new ProjectionCamera({
-      renderer: this.vantageRenderer.renderer,
-      texture: this.texture,
-      ratio: width / height
-    })
-
-    this.object.add(this.projection)
-
-    // this.vantageRenderer.addEventListener('vantage:model:add', () => {})
-
-    const material = new ProjectedMaterial({
-      camera: this.projection.camera,
+    const mat = new ProjectedMaterial({
+      camera: this,
       texture: this.texture,
       transparent: true,
+      textureScale: 1,
       opacity: 1,
-      depthMap: this.projection.renderTarget.depthTexture
+      depthMap: this.renderTarget.depthTexture
     })
-    this.projection.plane.geometry.addGroup(0, Infinity, 1)
-    this.projection.plane.material.push(material)
-    material.project(this.projection.plane)
+    mesh.material.push(mat)
+    mat.project(mesh)
+    this._materials.set(mesh, mat)
   }
 
-  removeProjection() {
-    if (this.projection == null) return
-    this.projection.cameraHelper.removeFromParent()
+  _createDepthMap(renderer, scene) {
+    scene.overrideMaterial = this._depthMaterial
+    renderer.setRenderTarget(this.renderTarget)
+    renderer.render(scene, this)
+    renderer.setRenderTarget(null)
+    scene.overrideMaterial = null
   }
 
-  update() {
-    if (this.projection == null) return
-    if (this.modified || this.frustum == null) {
-      this.frustum = getCameraFrustum(this.projection.camera)
-    }
-
-    if (this.vantageRenderer.needsProjectionMaterialUpdate) {
-      this.projection.createDepthMap()
-      this.vantageRenderer.models.forEach((vantageModel) => {
-        if (!vantageModel.model) return
-        vantageModel.model.traverse((object) => {
-          if (!object.isMesh) return
-          if (object.material.includes(this.materials.get(object))) return
-          object.geometry.addGroup(0, Infinity, object.geometry.groups.length)
-
-          this.materials.set(
-            object,
-            new ProjectedMaterial({
-              camera: this.projection.camera,
-              texture: this.texture,
-              transparent: true,
-              opacity: 1,
-              depthMap: this.projection.renderTarget.depthTexture
-            })
-          )
-
-          object.material.push(this.materials.get(object))
-
-          this.materials.get(object).project(object)
-        })
-      })
-    }
-
-    const needsProjectionUpdate =
-      this.vantageRenderer.needsProjectionDepthMapUpdate ||
-      this.modified ||
-      [...this.vantageRenderer.models].find(
-        (model) =>
-          model.isProjectionTarget &&
-          model.modified &&
-          getMeshes(model.model).find((mesh) => this.frustum.intersectsObject(mesh))
-      )
-
-    if (needsProjectionUpdate) {
-      this.projection.createDepthMap()
-
-      const targets = [...this.vantageRenderer.models]
-        .filter((model) => model.isProjectionTarget)
-        .map((model) =>
-          getMeshes(model.model).filter((mesh) => this.frustum.intersectsObject(mesh))
-        )
-        .flat()
-
-      targets.forEach((target) => {
-        target.material.forEach((material) => material.project?.(target))
-      })
-    }
+  _getScene() {
+    let obj = this
+    while (obj.parent) obj = obj.parent
+    return obj.type === 'Scene' ? obj : null
   }
 }
-
-export { VantageProjection }
