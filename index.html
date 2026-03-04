@@ -6,8 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vantage Renderer</title>
     <style>
-      html,
-      body {
+      html, body {
         margin: 0;
         padding: 0;
         height: 100%;
@@ -19,6 +18,52 @@
         width: 100vw;
         height: 100vh;
       }
+      .panel {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: rgba(255,255,255,0.9);
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        min-width: 140px;
+      }
+      .panel .label {
+        color: #666;
+        margin-bottom: 4px;
+      }
+      .btn-group {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      button {
+        padding: 4px 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      button.active {
+        background: #333;
+        color: white;
+        border-color: #333;
+      }
+      button.editing-on {
+        background: #e74c3c;
+        color: white;
+        border-color: #c0392b;
+      }
+      .mode-section {
+        display: none;
+      }
+      .mode-section.visible {
+        display: block;
+      }
       .info {
         position: fixed;
         bottom: 0;
@@ -27,18 +72,55 @@
         padding: 2px 4px;
         font-size: 12px;
       }
+      .hint {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.6);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .hint.visible {
+        opacity: 1;
+      }
     </style>
   </head>
   <body>
     <canvas id="canvas"></canvas>
+
+    <div class="panel">
+      <div>
+        <div class="label">Projections</div>
+        <div class="btn-group" id="projectionBtns"></div>
+      </div>
+      <div>
+        <button id="editBtn">Enable Editing</button>
+      </div>
+      <div class="mode-section" id="modeSection">
+        <div class="label">Mode <span style="color:#999">(Tab)</span></div>
+        <div class="btn-group">
+          <button id="aimBtn" data-mode="aim">Aim</button>
+          <button id="moveBtn" data-mode="move">Move</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hint" id="hint"></div>
+
     <div class="info">
       © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors
     </div>
+
     <script type="module">
       import * as THREE from 'three'
-      import { MapControls } from 'three/addons/controls/MapControls.js'
       import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-      import { VantageProjection, setupLights, loadTexture } from '/src/main.js'
+      import { VantageProjection, CameraOperator, setupLights, loadTexture } from '/src/main.js'
 
       const canvas = document.getElementById('canvas')
 
@@ -50,27 +132,8 @@
       scene.background = new THREE.Color(0xf0f0f0)
       scene.add(setupLights())
 
-      const camera = new THREE.PerspectiveCamera(
-        60,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        2000
-      )
-      camera.position.set(-100, 50, 50)
-      camera.lookAt(0, 0, 0)
-
-      const controls = new MapControls(camera, canvas)
-      controls.enableDamping = true
-
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight
-        camera.updateProjectionMatrix()
-        renderer.setSize(window.innerWidth, window.innerHeight)
-      })
-
       // Load models and textures
       const loader = new GLTFLoader()
-
       const [textured, scene2, texture1, texture2] = await Promise.all([
         loader.loadAsync('./media/textured.glb'),
         loader.loadAsync('./media/scene.gltf'),
@@ -81,7 +144,6 @@
       const modelGroup = new THREE.Group()
       modelGroup.position.set(0, -10, -10)
       modelGroup.rotation.set(0, THREE.MathUtils.degToRad(30), 0)
-
       textured.scene.scale.setScalar(100)
       modelGroup.add(textured.scene, scene2.scene)
       scene.add(modelGroup)
@@ -99,22 +161,108 @@
       scene.add(projection2)
       projection2.project(modelGroup)
 
-      const projectionHelper1 = new THREE.CameraHelper(projection1)
-      projectionHelper1.layers.set(2)
-      scene.add(projectionHelper1)
+      // Camera helpers (layer 2)
+      const helper1 = new THREE.CameraHelper(projection1)
+      const helper2 = new THREE.CameraHelper(projection2)
+      helper1.layers.set(2)
+      helper2.layers.set(2)
+      scene.add(helper1, helper2)
 
-      const projectionHelper2 = new THREE.CameraHelper(projection2)
-      projectionHelper2.layers.set(2)
-      scene.add(projectionHelper2)
+      // Camera operator
+      const operator = new CameraOperator(renderer, scene, {
+        mapCameraPosition: [-100, 50, 50]
+      })
+      const aspect = window.innerWidth / window.innerHeight
+      operator.mapCamera.aspect = aspect
+      operator.mapCamera.updateProjectionMatrix()
+      operator.mapCamera.layers.enable(2)
+      operator.fpCamera.aspect = aspect
+      operator.fpCamera.updateProjectionMatrix()
+      operator.fpCamera.layers.enable(2)
 
-      camera.layers.enable(2)
+      window.addEventListener('resize', () => {
+        const aspect = window.innerWidth / window.innerHeight
+        operator.mapCamera.aspect = aspect
+        operator.mapCamera.updateProjectionMatrix()
+        operator.fpCamera.aspect = aspect
+        operator.fpCamera.updateProjectionMatrix()
+        renderer.setSize(window.innerWidth, window.innerHeight)
+      })
+
+      // --- UI ---
+      const projections = [projection1, projection2]
+      const projectionBtns = document.getElementById('projectionBtns')
+      const editBtn = document.getElementById('editBtn')
+      const modeSection = document.getElementById('modeSection')
+      const aimBtn = document.getElementById('aimBtn')
+      const moveBtn = document.getElementById('moveBtn')
+      const hint = document.getElementById('hint')
+
+      function showHint(text, duration = 2000) {
+        hint.textContent = text
+        hint.classList.add('visible')
+        clearTimeout(hint._timeout)
+        hint._timeout = setTimeout(() => hint.classList.remove('visible'), duration)
+      }
+
+      // Create projection buttons
+      projections.forEach((p, i) => {
+        const btn = document.createElement('button')
+        btn.textContent = `Proj ${i + 1}`
+        btn.addEventListener('click', () => operator.selectProjection(p))
+        projectionBtns.appendChild(btn)
+      })
+
+      editBtn.addEventListener('click', () => {
+        operator.setEditingEnabled(!operator.editingEnabled)
+      })
+
+      aimBtn.addEventListener('click', () => operator.setMode('aim'))
+      moveBtn.addEventListener('click', () => operator.setMode('move'))
+
+      function syncModeUI(mode) {
+        aimBtn.classList.toggle('active', mode === 'aim')
+        moveBtn.classList.toggle('active', mode === 'move')
+        // Move button only shown when editing is enabled
+        moveBtn.style.display = operator.editingEnabled ? '' : 'none'
+      }
+
+      // Sync UI to operator state
+      operator.addEventListener('select', ({ projection }) => {
+        projectionBtns.querySelectorAll('button').forEach((btn, i) => {
+          btn.classList.toggle('active', projections[i] === projection)
+        })
+        modeSection.classList.add('visible')
+        syncModeUI(operator.mode)
+        showHint('Tab — aim mode   ·   Esc — deselect')
+      })
+
+      operator.addEventListener('deselect', () => {
+        projectionBtns.querySelectorAll('button').forEach(btn => btn.classList.remove('active'))
+        modeSection.classList.remove('visible')
+      })
+
+      operator.addEventListener('editing-changed', ({ enabled }) => {
+        editBtn.textContent = enabled ? 'Disable Editing' : 'Enable Editing'
+        editBtn.classList.toggle('editing-on', enabled)
+        moveBtn.style.display = enabled ? '' : 'none'
+        if (enabled && operator.activeProjection) showHint('Tab — aim mode   ·   Drag gizmo — move')
+      })
+
+      operator.addEventListener('mode-changed', ({ mode }) => {
+        syncModeUI(mode)
+        if (mode === 'aim') showHint('Drag to aim · WASD — move · R/F — up/down · Tab — move mode', 4000)
+        if (mode === 'move') showHint('Drag gizmo to reposition · Tab — aim mode · Esc — deselect', 3000)
+      })
 
       // Render loop
+      const clock = new THREE.Clock()
       renderer.setAnimationLoop(() => {
-        controls.update()
+        const delta = clock.getDelta() * 1000
+        operator.update(delta)
         projection1.update(renderer, scene)
         projection2.update(renderer, scene)
-        renderer.render(scene, camera)
+        renderer.render(scene, operator.camera)
       })
     </script>
   </body>

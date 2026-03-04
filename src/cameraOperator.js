@@ -1,339 +1,256 @@
-import {
-  PerspectiveCamera,
-  Vector3,
-  Quaternion,
-  EventDispatcher,
-  SphereGeometry,
-  MeshBasicMaterial,
-  Mesh,
-  Raycaster,
-  Vector2,
-  Plane
-} from 'three'
-import { MapControls } from 'three/addons/controls/MapControls'
-import { PointerLockControls } from './CustomPointerLockControls'
-import { DragControls } from 'three/addons/controls/DragControls.js'
+import { PerspectiveCamera, Vector3, Euler, EventDispatcher } from 'three'
+import { MapControls } from 'three/addons/controls/MapControls.js'
+import { TransformControls } from 'three/addons/controls/TransformControls.js'
 
-export default class CameraOperator extends EventDispatcher {
-  mapCamera = new PerspectiveCamera(60, innerWidth / innerHeight, 1, 10000)
-  fpCamera = new PerspectiveCamera(60, innerWidth / innerHeight, 1, 10000)
+// Reused vectors to avoid per-frame allocations
+const _forward = new Vector3()
+const _right = new Vector3()
+const _worldUp = new Vector3(0, 1, 0)
+const _euler = new Euler(0, 0, 0, 'YXZ')
+
+export class CameraOperator extends EventDispatcher {
+  mapCamera = new PerspectiveCamera(60, 1, 0.1, 10000)
+  // fpCamera is used for aim mode — screen aspect ratio, synced to active projection
+  fpCamera = new PerspectiveCamera(60, 1, 0.1, 10000)
   mapControls
-  projection
-  #firstPerson
-  #controls
-  #focusCamera
-  scene
-  domElement
-  focusMarker
-  dragControls
-  mouse = new Vector2()
+  transformControls
 
-  constructor(
-    renderer,
-    { mapCameraPosition = [-100, 50, 50], domElement, scene, firstPerson, controls }
-  ) {
+  activeProjection = null
+  mode = 'map' // 'map' | 'move' | 'aim'
+  editingEnabled = false
+
+  _transition = null
+  _heldKeys = new Set()
+  _isDragging = false
+  _dragLast = { x: 0, y: 0 }
+  _domElement
+
+  constructor(renderer, scene, { mapCameraPosition = [-100, 50, 50] } = {}) {
     super()
-    // this.renderer = renderer
-    this.domElement = domElement
-    this.scene = scene
-    this.mapCamera.position.set(...mapCameraPosition)
-    // if (mapCameraRotation) {
-    //   this.mapCamera.rotation.set(mapCameraRotation)
-    // }
+    this._domElement = renderer.domElement
 
-    this.mapCamera.rotation.set(Math.PI / 2, 0, 0, 'YXZ')
+    this.mapCamera.position.set(...mapCameraPosition)
 
     this.mapControls = new MapControls(this.mapCamera, renderer.domElement)
-    this.mapControls.minDistance = 10
-    this.mapControls.maxDistance = 1000
-    // this.mapControls.target = new Vector3(0, 0, 0)
+    this.mapControls.enableDamping = true
 
-    this.fpControls = new PointerLockControls(
-      this.fpCamera,
-      // renderer.domElement
-      domElement
-      // this.domElement
-    )
-
-    this.fpControls.addEventListener('unlock', () => {
-      this.map()
-      this.dispatchEvent({ type: 'vantage:unlock-first-person' })
+    // In r162+, scene.add(transformControls) is replaced by scene.add(transformControls.getHelper())
+    this.transformControls = new TransformControls(this.mapCamera, renderer.domElement)
+    this.transformControls.addEventListener('dragging-changed', (event) => {
+      this.mapControls.enabled = !event.value
     })
+    scene.add(this.transformControls.getHelper())
 
-    this.fpControls.addEventListener('change', () => {
-      // if (this.fpControls.attachedCamera != null) this.projection.update()
-    })
+    // Aim mode: drag to look (no pointer lock)
+    renderer.domElement.addEventListener('mousedown', this._onMouseDown)
+    renderer.domElement.addEventListener('mousemove', this._onMouseMove)
+    renderer.domElement.addEventListener('mouseup', this._onMouseUp)
+    renderer.domElement.addEventListener('mouseleave', this._onMouseUp)
 
-    this.fpControls.enabled = false
-
-    this.firstPerson = firstPerson
-    this.controls = controls
-    document.addEventListener('keydown', this.keydown)
-    document.addEventListener('mousedown', this.mousedown)
-    document.addEventListener('wheel', this.wheel)
-
-    this.createFocusMarker()
+    document.addEventListener('keydown', this._onKeydown)
+    document.addEventListener('keyup', this._onKeyup)
   }
 
-  set camera(camera) {
-    this.#focusCamera = camera
-    if (!this.#firstPerson || camera == null) return
-
-    const pos = camera.getWorldPosition(new Vector3())
-    const quat = camera.getWorldQuaternion(new Quaternion())
-
-    this.fpCamera.position.set(...pos)
-    this.fpCamera.setRotationFromQuaternion(quat)
-    this.fpCamera.updateProjectionMatrix()
-  }
-
+  // The camera used for the main scene render
   get camera() {
-    return !this.#firstPerson ? this.mapCamera : this.fpCamera
+    return this.mode === 'aim' ? this.fpCamera : this.mapCamera
   }
 
-  set firstPerson(firstPerson) {
-    this.#firstPerson = firstPerson
-    if (firstPerson) this.fp()
-    else this.map()
+  // Select a projection — shows gizmo (if editing), stays in map view (no transition)
+  selectProjection(projection) {
+    if (this.mode === 'aim') this._exitAimMode()
+    this.transformControls.detach()
+    this.activeProjection = projection
+    const newMode = this.editingEnabled ? 'move' : 'map'
+    if (this.editingEnabled) this.transformControls.attach(projection)
+    this.mode = newMode
+    this.dispatchEvent({ type: 'select', projection })
+    this.dispatchEvent({ type: 'mode-changed', mode: newMode })
   }
 
-  get firstPerson() {
-    return this.#firstPerson
+  deselectProjection() {
+    if (this.mode === 'aim') this._exitAimMode()
+    this.transformControls.detach()
+    this._transition = null
+    this.activeProjection = null
+    this.mode = 'map'
+    this.dispatchEvent({ type: 'deselect' })
+    this.dispatchEvent({ type: 'mode-changed', mode: 'map' })
   }
 
-  set controls(controls) {
-    if (controls) {
-      if (this.firstPerson) this.fp()
-      else this.map()
-    }
-    // else this.map()
-    this.#controls = controls
-  }
+  // mode: 'aim' | 'move'  (pass 'map' / nothing to deselect)
+  setMode(newMode) {
+    if (newMode === this.mode || !this.activeProjection) return
 
-  get controls() {
-    return this.#controls
-  }
-
-  map() {
-    if (!this.controls || this.mapControls.enabled) return
-
-    this.mapControls.enabled = true
-    this.fpControls.enabled = false
-    this.fpControls.unlock()
-  }
-
-  fp() {
-    if (!this.controls || this.fpControls.enabled) return
-
-    this.mapControls.enabled = false
-    this.fpControls.enabled = true
-    this.fpControls.lock()
-  }
-
-  attachProjection = (projection, reverse) => {
-    this.detachProjection()
-    const source = reverse ? this.fpCamera : projection.camera
-    const target = reverse ? projection.camera : this.fpCamera
-
-    const pos = source.getWorldPosition(new Vector3())
-    const quat = source.getWorldQuaternion(new Quaternion())
-    target.position.set(...pos)
-    target.setRotationFromQuaternion(quat)
-    target.updateProjectionMatrix()
-
-    this.projection = projection
-    this.projection.focus()
-
-    if (reverse) this.projection.update()
-  }
-
-  detachProjection = () => {
-    this.projection?.blur()
-    this.projection = null
-  }
-
-  keydown = ({ code }) => {
-    if (!this.controls) return
-    // if (this.mapControls.enabled) return;
-    if (this.firstPerson && !this.fpControls.enabled) return
-
-    switch (code) {
-      case 'KeyF':
-        this.fpCamera.translateY(-1)
-        break
-      case 'KeyR':
-        this.fpCamera.translateY(1)
-        break
-      case 'KeyW': {
-        const fixedY = this.fpCamera.position.y
-        this.fpCamera.translateZ(-1)
-        this.fpCamera.position.y = fixedY
-        break
-      }
-      case 'KeyA': {
-        const fixedY = this.fpCamera.position.y
-        this.fpCamera.translateX(-1)
-        this.fpCamera.position.y = fixedY
-        break
-      }
-      case 'KeyS': {
-        const fixedY = this.fpCamera.position.y
-        this.fpCamera.translateZ(1)
-        this.fpCamera.position.y = fixedY
-        break
-      }
-      case 'KeyD': {
-        const fixedY = this.fpCamera.position.y
-        this.fpCamera.translateX(1)
-        this.fpCamera.position.y = fixedY
-        break
-      }
-      case 'KeyQ':
-        this.#focusCamera.rotateZ(0.02)
-        this.dispatchEvent({
-          type: 'vantage:update-focus-camera',
-          value: [...this.#focusCamera.rotation].slice(0, -1)
-        })
-        break
-      case 'KeyE':
-        this.#focusCamera.rotateZ(-0.02)
-        this.dispatchEvent({
-          type: 'vantage:update-focus-camera',
-          value: [...this.#focusCamera.rotation].slice(0, -1)
-        })
-        break
-    }
-  }
-
-  mousedown = () => {
-    if (!this.fpControls.enabled || this.#focusCamera == null) return
-    this.fpControls.attachCamera(this.#focusCamera)
-    window.addEventListener(
-      'mouseup',
-      () => {
-        this.fpControls.detachCamera()
-        this.dispatchEvent({
-          type: 'vantage:update-focus-camera',
-          value: [...this.#focusCamera.rotation].slice(0, -1)
-        })
-      },
-      {
-        once: true
-      }
-    )
-  }
-
-  wheel = (event) => {
-    if (!this.fpControls.enabled || this.#focusCamera == null) return
-    this.fpControls.attachCamera(this.#focusCamera)
-
-    const delta = event.deltaY * 0.05
-    this.#focusCamera.fov += delta
-    this.#focusCamera.fov = Math.max(0, Math.min(175, this.#focusCamera.fov))
-    this.#focusCamera.updateProjectionMatrix()
-
-    this.fpControls.detachCamera()
-
-    this.dispatchEvent({
-      type: 'vantage:update-fov',
-      value: this.#focusCamera.fov
-    })
-  }
-
-  createFocusMarker() {
-    const geom = new SphereGeometry(1, 16, 16)
-    const mat = new MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 1.0 })
-    this.focusMarker = new Mesh(geom, mat)
-    this.focusMarker.name = 'FocusMarker'
-    this.focusMarker.layers.set(2)
-    this.scene.add(this.focusMarker)
-    this.focusMarker.visible = false
-  }
-
-  updateFocusMarker(projections) {
-    const focusProjection = Object.values(projections).find((p) => p.focus && p.ready)
-    if (focusProjection) {
-      this.focusMarker.visible = true
-      this.focusMarker.position.copy(focusProjection.camera.position)
-    } else {
-      this.focusMarker.visible = false
-    }
-  }
-
-  focusOnCamera(projections) {
-    const raycaster = new Raycaster()
-    raycaster.setFromCamera(this.mouse, this.mapCamera)
-    let candidate = null
-    let minDistance = Infinity
-    Object.values(projections).forEach((p) => {
-      if (p.attributes && p.attributes['projection-type'] === 'map') return
-      const targetObj = p.plane || p.helper
-      const intersects = raycaster.intersectObject(targetObj, true)
-      if (intersects.length > 0 && intersects[0].distance < minDistance) {
-        minDistance = intersects[0].distance
-        candidate = p
-      }
-    })
-    if (candidate) {
-      Object.values(projections).forEach((p) => {
-        p.element.setAttribute('focus', p === candidate)
-      })
-      candidate.element.dispatchEvent(
-        new CustomEvent('vantage:set-focus', { bubbles: true, detail: { id: candidate.id } })
+    if (newMode === 'aim') {
+      this.transformControls.detach()
+      // Position fpCamera at projection with screen aspect ratio
+      this.fpCamera.position.copy(this.activeProjection.position)
+      this.fpCamera.quaternion.copy(this.activeProjection.quaternion)
+      this.fpCamera.aspect = this._domElement.clientWidth / this._domElement.clientHeight
+      this.fpCamera.updateProjectionMatrix()
+      // Transition mapCamera to projection position, then switch rendering to fpCamera
+      this._startTransition(
+        this.mapCamera.position.clone(),
+        this.mapCamera.quaternion.clone(),
+        this.activeProjection.position.clone(),
+        this.activeProjection.quaternion.clone(),
+        600,
+        () => {
+          if (!this.activeProjection) return
+          this.mode = 'aim'
+          this.dispatchEvent({ type: 'mode-changed', mode: 'aim' })
+        }
       )
+      // mode stays unchanged until transition completes
+    } else if (newMode === 'move') {
+      if (!this.editingEnabled) return
+      if (this.mode === 'aim') this._exitAimMode()
+      this.transformControls.attach(this.activeProjection)
+      this.mode = 'move'
+      this.dispatchEvent({ type: 'mode-changed', mode: 'move' })
+    } else {
+      this.deselectProjection()
     }
   }
 
-  updateMouse(event) {
-    const rect = this.domElement.getBoundingClientRect()
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  setEditingEnabled(enabled) {
+    if (!enabled) {
+      if (this.mode === 'move') {
+        this.transformControls.detach()
+        this.mode = 'map'
+        this.dispatchEvent({ type: 'mode-changed', mode: 'map' })
+      }
+    } else if (this.activeProjection && this.mode !== 'aim') {
+      this.transformControls.attach(this.activeProjection)
+      this.mode = 'move'
+      this.dispatchEvent({ type: 'mode-changed', mode: 'move' })
+    }
+    this.editingEnabled = enabled
+    this.dispatchEvent({ type: 'editing-changed', enabled })
   }
 
-  initDragControls(projections) {
-    if (this.dragControls) {
-      this.dragControls.dispose()
-      this.dragControls = null
+  // Call every frame — deltaMs is time since last frame in milliseconds
+  update(deltaMs) {
+    if (this._transition) {
+      this._transition.elapsed += deltaMs
+      const t = Math.min(this._transition.elapsed / this._transition.duration, 1)
+      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+      this.mapCamera.position.lerpVectors(this._transition.startPos, this._transition.endPos, eased)
+      this.mapCamera.quaternion.slerpQuaternions(this._transition.startQuat, this._transition.endQuat, eased)
+      if (t >= 1) {
+        this._transition.onComplete?.()
+        this._transition = null
+      }
+    } else if (this.mode === 'aim') {
+      this._updateAimMovement(deltaMs)
+    } else {
+      this.mapControls.update()
     }
-    this.dragControls = new DragControls([this.focusMarker], this.mapCamera, this.domElement)
-    this.dragControls.raycaster.layers.enable(2)
+  }
 
-    this.dragControls.addEventListener('dragstart', () => {
-      if (this.mapControls) {
-        this.mapControls.enabled = false
-      }
-    })
-    this.dragControls.addEventListener('dragend', () => {
-      if (this.mapControls) {
-        this.mapControls.enabled = true
-      }
-    })
-    this.dragControls.addEventListener('drag', () => {
-      const focusProjection = Object.values(projections).find((p) => p.focus)
-      if (!focusProjection) return
-      const raycaster = new Raycaster()
-      raycaster.setFromCamera(this.mouse, this.mapCamera)
-      const plane = new Plane(new Vector3(0, 1, 0), -focusProjection.camera.position.y)
-      const intersection = new Vector3()
-      raycaster.ray.intersectPlane(plane, intersection)
+  dispose() {
+    this._domElement.removeEventListener('mousedown', this._onMouseDown)
+    this._domElement.removeEventListener('mousemove', this._onMouseMove)
+    this._domElement.removeEventListener('mouseup', this._onMouseUp)
+    this._domElement.removeEventListener('mouseleave', this._onMouseUp)
+    document.removeEventListener('keydown', this._onKeydown)
+    document.removeEventListener('keyup', this._onKeyup)
+    this.mapControls.dispose()
+    this.transformControls.dispose()
+  }
 
-      const rendererEl = focusProjection.element.closest('vantage-renderer')
-      const globalTime = rendererEl ? parseFloat(rendererEl.getAttribute('time')) : 0
-      const activeKeyframe = focusProjection.element.selectActiveKeyframe(globalTime)
-      if (activeKeyframe) {
-        activeKeyframe.setAttribute(
-          'position',
-          `${intersection.x} ${intersection.y} ${intersection.z}`
-        )
+  _startTransition(startPos, startQuat, endPos, endQuat, duration, onComplete) {
+    this._transition = { startPos, startQuat, endPos, endQuat, elapsed: 0, duration, onComplete }
+  }
 
-        activeKeyframe.dispatchEvent(
-          new CustomEvent('vantage:set-position', {
-            bubbles: true,
-            detail: { position: [...intersection] }
-          })
-        )
-      }
+  // Sync mapCamera to fpCamera position, update MapControls target, exit aim mode
+  _exitAimMode() {
+    if (this.mode !== 'aim') return
+    this.mapCamera.position.copy(this.fpCamera.position)
+    this.mapCamera.quaternion.copy(this.fpCamera.quaternion)
+    // Point MapControls target in front of the camera to prevent rotation snap on next update
+    this.fpCamera.getWorldDirection(_forward)
+    this.mapControls.target.copy(this.fpCamera.position).addScaledVector(_forward, 10)
+    this.mapControls.enableDamping = false
+    this.mapControls.update()
+    this.mapControls.enableDamping = true
+    this.mode = 'map'
+    this._isDragging = false
+    this._heldKeys.clear()
+  }
 
-    })
+  _updateAimMovement(deltaMs) {
+    if (this._heldKeys.size === 0) return
+
+    this.fpCamera.getWorldDirection(_forward)
+    _forward.y = 0
+    const len = _forward.length()
+    if (len < 0.001) return // Looking straight up/down
+    _forward.divideScalar(len)
+    _right.crossVectors(_forward, _worldUp).normalize()
+
+    const speed = 0.03 * deltaMs
+    const pos = this.fpCamera.position
+    let moved = false
+
+    if (this._heldKeys.has('KeyW') || this._heldKeys.has('ArrowUp')) { pos.addScaledVector(_forward, speed); moved = true }
+    if (this._heldKeys.has('KeyS') || this._heldKeys.has('ArrowDown')) { pos.addScaledVector(_forward, -speed); moved = true }
+    if (this._heldKeys.has('KeyA') || this._heldKeys.has('ArrowLeft')) { pos.addScaledVector(_right, -speed); moved = true }
+    if (this._heldKeys.has('KeyD') || this._heldKeys.has('ArrowRight')) { pos.addScaledVector(_right, speed); moved = true }
+    if (this._heldKeys.has('KeyR')) { pos.y += speed; moved = true }
+    if (this._heldKeys.has('KeyF')) { pos.y -= speed; moved = true }
+
+    if (moved) {
+      this.activeProjection.position.copy(pos)
+      this.activeProjection.updateMatrixWorld()
+    }
+  }
+
+  _onMouseDown = (event) => {
+    if (this.mode !== 'aim') return
+    this._isDragging = true
+    this._dragLast = { x: event.clientX, y: event.clientY }
+  }
+
+  _onMouseMove = (event) => {
+    if (this.mode !== 'aim' || !this._isDragging) return
+    const dx = event.clientX - this._dragLast.x
+    const dy = event.clientY - this._dragLast.y
+    this._dragLast = { x: event.clientX, y: event.clientY }
+
+    _euler.setFromQuaternion(this.fpCamera.quaternion)
+    _euler.y -= dx * 0.003
+    _euler.x -= dy * 0.003
+    _euler.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, _euler.x))
+    this.fpCamera.quaternion.setFromEuler(_euler)
+
+    this.activeProjection.quaternion.copy(this.fpCamera.quaternion)
+    this.activeProjection.updateMatrixWorld()
+  }
+
+  _onMouseUp = () => {
+    this._isDragging = false
+  }
+
+  _onKeydown = (event) => {
+    if (this.mode === 'aim') this._heldKeys.add(event.code)
+
+    switch (event.code) {
+      case 'Tab':
+        event.preventDefault()
+        if (!this.activeProjection) return
+        if (this.mode === 'aim' && this.editingEnabled) this.setMode('move')
+        else if (this.mode === 'move') this.setMode('aim')
+        else if (this.mode === 'map') this.setMode('aim')
+        break
+      case 'Escape':
+        if (this.activeProjection) this.deselectProjection()
+        break
+    }
+  }
+
+  _onKeyup = (event) => {
+    this._heldKeys.delete(event.code)
   }
 }
