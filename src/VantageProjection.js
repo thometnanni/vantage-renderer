@@ -6,21 +6,19 @@ import {
   MeshDepthMaterial
 } from 'three'
 import ProjectedMaterial from 'three-projected-material'
-import { loadTexture } from './utils'
 
 export class VantageProjection extends PerspectiveCamera {
   cameraHelper
   renderTarget
   texture = null
   _materials = new Map()
-  _pendingObjects = []
   _depthMaterial = new MeshDepthMaterial({
     polygonOffset: true,
     polygonOffsetFactor: 1.0,
     polygonOffsetUnits: 1.0
   })
 
-  constructor({ texture, src, fov = 60, near = 1, far = 200, renderTargetSize = 1024 } = {}) {
+  constructor({ texture, fov = 60, near = 1, far = 200, renderTargetSize = 1024 } = {}) {
     super(fov, 1, near, far)
 
     this.cameraHelper = new CameraHelper(this)
@@ -29,11 +27,7 @@ export class VantageProjection extends PerspectiveCamera {
     this.renderTarget = new WebGLRenderTarget(renderTargetSize, renderTargetSize)
     this.renderTarget.depthTexture = new DepthTexture()
 
-    if (texture) {
-      this.setTexture(texture)
-    } else if (src) {
-      this.loadTexture(src)
-    }
+    if (texture) this.setTexture(texture)
 
     this.addEventListener('added', () => {
       const scene = this._getScene()
@@ -52,20 +46,9 @@ export class VantageProjection extends PerspectiveCamera {
     this.aspect = w / h
     this.updateProjectionMatrix()
     this.cameraHelper.update()
-    for (const obj of this._pendingObjects.splice(0)) this.project(obj)
-  }
-
-  async loadTexture(src) {
-    const texture = await loadTexture(src)
-    this.setTexture(texture)
-    return texture
   }
 
   project(object) {
-    if (!this.texture) {
-      this._pendingObjects.push(object)
-      return
-    }
     object.traverse((child) => {
       if (!child.isMesh) return
       this._applyMaterial(child)

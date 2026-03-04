@@ -38,7 +38,7 @@
       import * as THREE from 'three'
       import { MapControls } from 'three/addons/controls/MapControls.js'
       import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-      import { VantageProjection, setupLights } from '/src/main.js'
+      import { VantageProjection, setupLights, loadTexture } from '/src/main.js'
 
       const canvas = document.getElementById('canvas')
 
@@ -68,12 +68,14 @@
         renderer.setSize(window.innerWidth, window.innerHeight)
       })
 
-      // Load models
+      // Load models and textures
       const loader = new GLTFLoader()
 
-      const [textured, scene2] = await Promise.all([
+      const [textured, scene2, texture1, texture2] = await Promise.all([
         loader.loadAsync('./media/textured.glb'),
-        loader.loadAsync('./media/scene.gltf')
+        loader.loadAsync('./media/scene.gltf'),
+        loadTexture('./media/IMG_3271.jpeg'),
+        loadTexture('./media/hermann-1.jpg')
       ])
 
       const modelGroup = new THREE.Group()
@@ -85,23 +87,13 @@
       scene.add(modelGroup)
 
       // Create projections
-      const projection1 = new VantageProjection({
-        src: './media/IMG_3271.jpeg',
-        fov: 60,
-        near: 1,
-        far: 200
-      })
+      const projection1 = new VantageProjection({ texture: texture1, fov: 60, near: 1, far: 200 })
       projection1.position.set(100, 100, 0)
       projection1.rotation.set(0, THREE.MathUtils.degToRad(45), 0)
       scene.add(projection1)
       projection1.project(modelGroup)
 
-      const projection2 = new VantageProjection({
-        src: './media/hermann-1.jpg',
-        fov: 60,
-        near: 10,
-        far: 200
-      })
+      const projection2 = new VantageProjection({ texture: texture2, fov: 60, near: 10, far: 200 })
       projection2.position.set(-180, 4, -140)
       projection2.rotation.set(0, THREE.MathUtils.degToRad(-90), 0)
       scene.add(projection2)
