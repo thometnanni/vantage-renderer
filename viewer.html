@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vantage Viewer</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        font-family: sans-serif;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      .panel {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: rgba(255,255,255,0.9);
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        min-width: 140px;
+      }
+      .panel .label {
+        color: #666;
+        margin-bottom: 4px;
+      }
+      .btn-group {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      button {
+        padding: 4px 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      button.active {
+        background: #333;
+        color: white;
+        border-color: #333;
+      }
+      input[type="file"] {
+        font-size: 11px;
+        max-width: 140px;
+      }
+      .info {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        background: white;
+        padding: 2px 4px;
+        font-size: 12px;
+      }
+      .hint {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.6);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .hint.visible {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+
+    <div class="panel">
+      <div>
+        <div class="label">Open file</div>
+        <input type="file" id="fileInput" accept=".glb,.gltf" />
+      </div>
+      <div id="cameraSection" style="display:none">
+        <div class="label">Camera <span style="color:#999">(Esc)</span></div>
+        <div class="btn-group" id="cameraBtns">
+          <button id="freeCamBtn" class="active">Free</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hint" id="hint"></div>
+
+    <div class="info">
+      © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors
+    </div>
+
+    <script type="module">
+      import * as THREE from 'three'
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+      import { MapControls } from 'three/addons/controls/MapControls.js'
+      import { VantageProjectionLoaderPlugin, setupLights } from '/src/main.js'
+
+      const canvas = document.getElementById('canvas')
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+      renderer.setPixelRatio(window.devicePixelRatio)
+      renderer.setSize(window.innerWidth, window.innerHeight)
+
+      const scene = new THREE.Scene()
+      scene.background = new THREE.Color(0xf0f0f0)
+      scene.add(setupLights())
+
+      const aspect = window.innerWidth / window.innerHeight
+      const mapCamera = new THREE.PerspectiveCamera(60, aspect, 0.1, 10000)
+      mapCamera.position.set(0, 50, 100)
+      const fpCamera = new THREE.PerspectiveCamera(60, aspect, 0.1, 10000)
+
+      const mapControls = new MapControls(mapCamera, canvas)
+      mapControls.enableDamping = true
+
+      // --- State ---
+      let projections = []
+      let activeProjection = null
+      let transition = null
+      let loadedScene = null
+
+      const _forward = new THREE.Vector3()
+
+      function getCamera() {
+        return activeProjection ? fpCamera : mapCamera
+      }
+
+      function viewProjection(projection) {
+        fpCamera.position.copy(projection.position)
+        fpCamera.quaternion.copy(projection.quaternion)
+        fpCamera.fov = projection.fov
+        fpCamera.aspect = window.innerWidth / window.innerHeight
+        fpCamera.near = projection.near
+        fpCamera.far = projection.far
+        fpCamera.updateProjectionMatrix()
+
+        activeProjection = null
+        mapControls.enabled = false
+
+        transition = {
+          startPos: mapCamera.position.clone(),
+          startQuat: mapCamera.quaternion.clone(),
+          endPos: projection.position.clone(),
+          endQuat: projection.quaternion.clone(),
+          elapsed: 0,
+          duration: 600,
+          onComplete: () => { activeProjection = projection }
+        }
+      }
+
+      function goFreeCamera() {
+        activeProjection = null
+        transition = null
+        mapControls.enabled = true
+        mapCamera.getWorldDirection(_forward)
+        mapControls.target.copy(mapCamera.position).addScaledVector(_forward, 10)
+        mapControls.enableDamping = false
+        mapControls.update()
+        mapControls.enableDamping = true
+      }
+
+      // --- UI ---
+      const fileInput = document.getElementById('fileInput')
+      const cameraSection = document.getElementById('cameraSection')
+      const cameraBtns = document.getElementById('cameraBtns')
+      const freeCamBtn = document.getElementById('freeCamBtn')
+      const hint = document.getElementById('hint')
+
+      function showHint(text, duration = 2000) {
+        hint.textContent = text
+        hint.classList.add('visible')
+        clearTimeout(hint._timeout)
+        hint._timeout = setTimeout(() => hint.classList.remove('visible'), duration)
+      }
+
+      function syncUI() {
+        freeCamBtn.classList.toggle('active', !activeProjection && !transition)
+        cameraBtns.querySelectorAll('[data-proj]').forEach((btn, i) => {
+          btn.classList.toggle('active', projections[i] === activeProjection)
+        })
+      }
+
+      freeCamBtn.addEventListener('click', () => {
+        goFreeCamera()
+        syncUI()
+      })
+
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+
+        if (loadedScene) {
+          scene.remove(loadedScene)
+          for (const p of projections) p.dispose()
+        }
+        projections = []
+        activeProjection = null
+        transition = null
+        cameraBtns.querySelectorAll('[data-proj]').forEach(b => b.remove())
+        cameraSection.style.display = 'none'
+
+        const url = URL.createObjectURL(file)
+        const loader = new GLTFLoader()
+        loader.register(parser => new VantageProjectionLoaderPlugin(parser))
+
+        try {
+          const gltf = await loader.loadAsync(url)
+          loadedScene = gltf.scene
+          scene.add(loadedScene)
+
+          gltf.scene.traverse(obj => {
+            if (obj.isVantageProjection) projections.push(obj)
+          })
+          for (const p of projections) p.project(gltf.scene)
+
+          // Fit camera to scene
+          const box = new THREE.Box3().setFromObject(gltf.scene)
+          const center = box.getCenter(new THREE.Vector3())
+          const size = box.getSize(new THREE.Vector3())
+          const maxDim = Math.max(size.x, size.y, size.z)
+          mapCamera.position.set(center.x, center.y + maxDim, center.z + maxDim)
+          mapControls.target.copy(center)
+          mapControls.update()
+
+          // Build camera buttons
+          projections.forEach((p, i) => {
+            const btn = document.createElement('button')
+            btn.textContent = p.name || `Proj ${i + 1}`
+            btn.dataset.proj = i
+            btn.addEventListener('click', () => {
+              viewProjection(p)
+              syncUI()
+              showHint('Esc — free camera')
+            })
+            cameraBtns.appendChild(btn)
+          })
+
+          if (projections.length) cameraSection.style.display = 'block'
+
+          goFreeCamera()
+          syncUI()
+
+          const msg = projections.length
+            ? `Loaded · ${projections.length} projection${projections.length > 1 ? 's' : ''}`
+            : 'Loaded · no projections'
+          showHint(msg)
+        } catch (err) {
+          console.error('Failed to load file:', err)
+        } finally {
+          URL.revokeObjectURL(url)
+        }
+      })
+
+      document.addEventListener('keydown', (e) => {
+        if (e.code === 'Escape' && (activeProjection || transition)) {
+          goFreeCamera()
+          syncUI()
+        }
+      })
+
+      window.addEventListener('resize', () => {
+        const aspect = window.innerWidth / window.innerHeight
+        mapCamera.aspect = aspect
+        mapCamera.updateProjectionMatrix()
+        fpCamera.aspect = aspect
+        fpCamera.updateProjectionMatrix()
+        renderer.setSize(window.innerWidth, window.innerHeight)
+      })
+
+      // --- Render loop ---
+      const clock = new THREE.Clock()
+      renderer.setAnimationLoop(() => {
+        const delta = clock.getDelta() * 1000
+
+        if (transition) {
+          transition.elapsed += delta
+          const t = Math.min(transition.elapsed / transition.duration, 1)
+          const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+          mapCamera.position.lerpVectors(transition.startPos, transition.endPos, eased)
+          mapCamera.quaternion.slerpQuaternions(transition.startQuat, transition.endQuat, eased)
+          if (t >= 1) {
+            transition.onComplete?.()
+            transition = null
+            syncUI()
+          }
+        } else if (!activeProjection) {
+          mapControls.update()
+        }
+
+        for (const p of projections) p.update(renderer, scene)
+        renderer.render(scene, getCamera())
+      })
+    </script>
+  </body>
+</html>

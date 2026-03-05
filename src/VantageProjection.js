@@ -2,6 +2,7 @@ import { PerspectiveCamera, WebGLRenderTarget, DepthTexture, MeshDepthMaterial }
 import ProjectedMaterial from 'three-projected-material'
 
 export class VantageProjection extends PerspectiveCamera {
+  isVantageProjection = true
   renderTarget
   texture = null
   _materials = new Map()
@@ -38,10 +39,26 @@ export class VantageProjection extends PerspectiveCamera {
   unproject(object) {
     object.traverse((child) => {
       if (!child.isMesh) return
-      const mat = this._materials.get(child)
-      if (!mat) return
+      const entry = this._materials.get(child)
+      if (!entry) return
+      const { mat, hadGroups } = entry
+
       const idx = child.material.indexOf(mat)
-      if (idx !== -1) child.material.splice(idx, 1)
+      if (idx !== -1) {
+        // Remove this projection's geometry group
+        child.geometry.groups = child.geometry.groups.filter(g => g.materialIndex !== idx)
+        // If we added the initial group (geometry had no groups before), remove it too
+        if (!hadGroups) {
+          child.geometry.groups = child.geometry.groups.filter(g => g.materialIndex !== 0)
+        }
+        // Adjust indices of remaining groups to close the gap left by the splice
+        child.geometry.groups.forEach(g => { if (g.materialIndex > idx) g.materialIndex-- })
+        // Remove material from array
+        child.material.splice(idx, 1)
+        // Unwrap single-element array back to a plain material
+        if (child.material.length === 1) child.material = child.material[0]
+      }
+
       this._materials.delete(child)
       mat.dispose()
     })
@@ -50,7 +67,7 @@ export class VantageProjection extends PerspectiveCamera {
   update(renderer, scene) {
     if (!this.texture || this._materials.size === 0) return
     this._createDepthMap(renderer, scene)
-    for (const [mesh, mat] of this._materials) {
+    for (const [mesh, { mat }] of this._materials) {
       mat.project(mesh)
     }
   }
@@ -58,7 +75,7 @@ export class VantageProjection extends PerspectiveCamera {
   dispose() {
     this.renderTarget.depthTexture.dispose()
     this.renderTarget.dispose()
-    for (const mat of this._materials.values()) {
+    for (const { mat } of this._materials.values()) {
       mat.dispose()
     }
     this._materials.clear()
@@ -68,10 +85,12 @@ export class VantageProjection extends PerspectiveCamera {
     if (this._materials.has(mesh)) return
     if (!this.texture) return
 
+    const hadGroups = mesh.geometry.groups.length > 0
+
     if (!Array.isArray(mesh.material)) {
       mesh.material = [mesh.material]
     }
-    if (mesh.geometry.groups.length === 0) {
+    if (!hadGroups) {
       mesh.geometry.addGroup(0, Infinity, 0)
     }
 
@@ -88,7 +107,7 @@ export class VantageProjection extends PerspectiveCamera {
     })
     mesh.material.push(mat)
     mat.project(mesh)
-    this._materials.set(mesh, mat)
+    this._materials.set(mesh, { mat, hadGroups })
   }
 
   _createDepthMap(renderer, scene) {

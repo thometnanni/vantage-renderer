@@ -102,6 +102,9 @@
       <div>
         <button id="editBtn">Enable Editing</button>
       </div>
+      <div>
+        <button id="exportBtn">Export GLB</button>
+      </div>
       <div class="mode-section" id="modeSection">
         <div class="label">Mode <span style="color:#999">(Tab)</span></div>
         <div class="btn-group">
@@ -120,7 +123,8 @@
     <script type="module">
       import * as THREE from 'three'
       import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-      import { VantageProjection, CameraOperator, setupLights, loadTexture } from '/src/main.js'
+      import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js'
+      import { VantageProjection, CameraOperator, setupLights, loadTexture, VantageProjectionExporterPlugin } from '/src/main.js'
 
       const canvas = document.getElementById('canvas')
 
@@ -253,6 +257,33 @@
         syncModeUI(mode)
         if (mode === 'aim') showHint('Drag to aim · WASD — move · R/F — up/down · Tab — move mode', 4000)
         if (mode === 'move') showHint('Drag gizmo to reposition · Tab — aim mode · Esc — deselect', 3000)
+      })
+
+      // Export
+      const exportBtn = document.getElementById('exportBtn')
+      exportBtn.addEventListener('click', async () => {
+        exportBtn.disabled = true
+        exportBtn.textContent = 'Exporting…'
+        try {
+          const exporter = new GLTFExporter()
+          exporter.register(writer => new VantageProjectionExporterPlugin(writer))
+          // Strip runtime effects before export (reverse order avoids material-index corruption)
+          scene.remove(helper1, helper2)
+          projection2.unproject(modelGroup)
+          projection1.unproject(modelGroup)
+          const glb = await exporter.parseAsync(scene, { binary: true })
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(new Blob([glb], { type: 'application/octet-stream' }))
+          a.download = 'scene.glb'
+          a.click()
+        } finally {
+          // Always restore scene state
+          projection1.project(modelGroup)
+          projection2.project(modelGroup)
+          scene.add(helper1, helper2)
+          exportBtn.disabled = false
+          exportBtn.textContent = 'Export GLB'
+        }
       })
 
       // Render loop
