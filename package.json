@@ -13,8 +13,7 @@
   "module": "./dist/vantage-renderer.js",
   "exports": {
     ".": {
-      "import": "./dist/vantage-renderer.js",
-      "require": "./dist/vantage-renderer.umd.cjs"
+      "import": "./src/main.js"
     }
   },
   "scripts": {
