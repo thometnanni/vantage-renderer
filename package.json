@@ -2,15 +2,11 @@
   "name": "vantage-renderer",
   "version": "0.0.12",
   "type": "module",
-  "files": [
-    "dist"
-  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/thometnanni/vantage-renderer.git"
   },
-  "main": "./dist/vantage-renderer.umd.cjs",
-  "module": "./dist/vantage-renderer.js",
+  "main": "./src/main.js",
   "exports": {
     ".": {
       "import": "./src/main.js"
