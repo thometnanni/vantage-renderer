@@ -1,5 +1,5 @@
 import { PerspectiveCamera, WebGLRenderTarget, DepthTexture, MeshDepthMaterial } from 'three'
-import ProjectedMaterial from 'three-projected-material'
+import ProjectionMaterial from './ProjectionMaterial'
 
 export class VantageProjection extends PerspectiveCamera {
   isVantageProjection = true
@@ -46,13 +46,15 @@ export class VantageProjection extends PerspectiveCamera {
       const idx = child.material.indexOf(mat)
       if (idx !== -1) {
         // Remove this projection's geometry group
-        child.geometry.groups = child.geometry.groups.filter(g => g.materialIndex !== idx)
+        child.geometry.groups = child.geometry.groups.filter((g) => g.materialIndex !== idx)
         // If we added the initial group (geometry had no groups before), remove it too
         if (!hadGroups) {
-          child.geometry.groups = child.geometry.groups.filter(g => g.materialIndex !== 0)
+          child.geometry.groups = child.geometry.groups.filter((g) => g.materialIndex !== 0)
         }
         // Adjust indices of remaining groups to close the gap left by the splice
-        child.geometry.groups.forEach(g => { if (g.materialIndex > idx) g.materialIndex-- })
+        child.geometry.groups.forEach((g) => {
+          if (g.materialIndex > idx) g.materialIndex--
+        })
         // Remove material from array
         child.material.splice(idx, 1)
         // Unwrap single-element array back to a plain material
@@ -97,11 +99,10 @@ export class VantageProjection extends PerspectiveCamera {
     const materialIndex = mesh.material.length
     mesh.geometry.addGroup(0, Infinity, materialIndex)
 
-    const mat = new ProjectedMaterial({
+    const mat = new ProjectionMaterial({
       camera: this,
       texture: this.texture,
       transparent: true,
-      textureScale: 1,
       opacity: 1,
       depthMap: this.renderTarget.depthTexture
     })
