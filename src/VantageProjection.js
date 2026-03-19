@@ -1,4 +1,12 @@
-import { PerspectiveCamera, WebGLRenderTarget, DepthTexture, MeshDepthMaterial } from 'three'
+import {
+  PerspectiveCamera,
+  WebGLRenderTarget,
+  DepthTexture,
+  MeshDepthMaterial,
+  Mesh,
+  PlaneGeometry,
+  MeshBasicMaterial
+} from 'three'
 import ProjectionMaterial from './ProjectionMaterial'
 
 export class VantageProjection extends PerspectiveCamera {
@@ -11,12 +19,15 @@ export class VantageProjection extends PerspectiveCamera {
     polygonOffsetFactor: 1.0,
     polygonOffsetUnits: 1.0
   })
+  projectionPlane = null
 
   constructor({ texture, fov = 60, near = 1, far = 200, renderTargetSize = 1024 } = {}) {
     super(fov, 1, near, far)
 
     this.renderTarget = new WebGLRenderTarget(renderTargetSize, renderTargetSize)
     this.renderTarget.depthTexture = new DepthTexture()
+
+    this._initProjectionPlane()
 
     if (texture) this.setTexture(texture)
   }
@@ -27,6 +38,11 @@ export class VantageProjection extends PerspectiveCamera {
     const h = texture.image?.videoHeight ?? texture.image?.height ?? 1
     this.aspect = w / h
     this.updateProjectionMatrix()
+    if (this.projectionPlane) {
+      this.projectionPlane.material.map = texture
+      this.projectionPlane.material.needsUpdate = true
+      this._updateProjectionPlaneSize()
+    }
   }
 
   project(object) {
@@ -81,6 +97,29 @@ export class VantageProjection extends PerspectiveCamera {
       mat.dispose()
     }
     this._materials.clear()
+    if (this.projectionPlane) {
+      this.projectionPlane.geometry.dispose()
+      this.projectionPlane.material.dispose()
+    }
+  }
+
+  _initProjectionPlane() {
+    const mat = new MeshBasicMaterial({ map: null, transparent: true, depthWrite: false })
+    const geo = new PlaneGeometry(1, 1)
+    this.projectionPlane = new Mesh(geo, mat)
+    this.projectionPlane.visible = true
+    this.projectionPlane.renderOrder = -1
+    this.add(this.projectionPlane)
+    this._updateProjectionPlaneSize()
+  }
+
+  _updateProjectionPlaneSize() {
+    if (!this.projectionPlane) return
+    const halfFovRad = (this.fov * Math.PI) / 180 / 2
+    const h = 2 * this.far * Math.tan(halfFovRad)
+    const w = h * this.aspect
+    this.projectionPlane.scale.set(w, h, 1)
+    this.projectionPlane.position.set(0, 0, -this.far)
   }
 
   _applyMaterial(mesh) {
